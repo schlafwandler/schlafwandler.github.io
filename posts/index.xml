@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Pointers to the void</title>
-    <link>https://schlafwandler.github.io/</link>
-    <description>Recent content on Pointers to the void</description>
+    <title>Posts on Pointers to the void</title>
+    <link>https://schlafwandler.github.io/posts/</link>
+    <description>Recent content in Posts on Pointers to the void</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Thu, 09 May 2019 00:00:21 +0200</lastBuildDate>
     
-	<atom:link href="https://schlafwandler.github.io/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://schlafwandler.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>

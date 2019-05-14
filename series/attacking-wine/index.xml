@@ -6,9 +6,20 @@
     <description>Recent content in Attacking WINE on Pointers to the void</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
+    <lastBuildDate>Thu, 09 May 2019 00:00:21 +0200</lastBuildDate>
     
 	<atom:link href="https://schlafwandler.github.io/series/attacking-wine/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Attacking applications running under WINE (Part I)</title>
+      <link>https://schlafwandler.github.io/posts/attacking-wine-part-i/</link>
+      <pubDate>Thu, 09 May 2019 00:00:21 +0200</pubDate>
+      
+      <guid>https://schlafwandler.github.io/posts/attacking-wine-part-i/</guid>
+      <description>Examining the WINE environment Intro This text is the first of a series that details the exploitation of Windows software running under WINE. My focus is on CTF-like settings, but most information should apply in other situations as well.
+In this text i concentrate on general properties of processes running in a WINE environment, especially on the aspects that are relevant for exploit development. I will take a deeper look into actual exploitation and some WINE specific tricks in the later parts.</description>
+    </item>
     
   </channel>
 </rss>

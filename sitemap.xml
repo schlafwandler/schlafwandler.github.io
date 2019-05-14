@@ -3,11 +3,17 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
+    <loc>https://schlafwandler.github.io/posts/attacking-wine-part-i/</loc>
+    <lastmod>2019-05-09T00:00:21+02:00</lastmod>
+  </url>
+  
+  <url>
     <loc>https://schlafwandler.github.io/tags/</loc>
   </url>
   
   <url>
     <loc>https://schlafwandler.github.io/series/attacking-wine/</loc>
+    <lastmod>2019-05-09T00:00:21+02:00</lastmod>
   </url>
   
   <url>
@@ -16,12 +22,32 @@
   </url>
   
   <url>
+    <loc>https://schlafwandler.github.io/categories/it-security/</loc>
+    <lastmod>2019-05-09T00:00:21+02:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
     <loc>https://schlafwandler.github.io/</loc>
+    <lastmod>2019-05-09T00:00:21+02:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://schlafwandler.github.io/posts/</loc>
+    <lastmod>2019-05-09T00:00:21+02:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>https://schlafwandler.github.io/series/</loc>
+    <lastmod>2019-05-09T00:00:21+02:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://schlafwandler.github.io/tags/wine/</loc>
+    <lastmod>2019-05-09T00:00:21+02:00</lastmod>
     <priority>0</priority>
   </url>
   

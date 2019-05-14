@@ -6,6 +6,7 @@
     <description>Recent content in Series on Pointers to the void</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
+    <lastBuildDate>Thu, 09 May 2019 00:00:21 +0200</lastBuildDate>
     
 	<atom:link href="https://schlafwandler.github.io/series/index.xml" rel="self" type="application/rss+xml" />
     
@@ -13,7 +14,7 @@
     <item>
       <title>Attacking WINE</title>
       <link>https://schlafwandler.github.io/series/attacking-wine/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <pubDate>Thu, 09 May 2019 00:00:21 +0200</pubDate>
       
       <guid>https://schlafwandler.github.io/series/attacking-wine/</guid>
       <description>Some exploration on the exploitation of applications running under WINE</description>

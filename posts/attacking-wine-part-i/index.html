@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    
+    <title>Pointers to the void  | Attacking applications running under WINE (Part I)</title>
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+
+    <meta name="viewport" content="width=device-width,minimum-scale=1">
+    <meta name="generator" content="Hugo 0.47.1" />
+    
+    
+      <META NAME="ROBOTS" CONTENT="NOINDEX, NOFOLLOW">
+    
+
+    
+    
+      <link href="/dist/css/app.d98f2eb6bcd1eaedb7edf166bd16af26.css" rel="stylesheet">
+    
+
+    
+
+    
+      
+    
+
+    
+
+    <meta property="og:title" content="Attacking applications running under WINE (Part I)" />
+<meta property="og:description" content="Examining the WINE environment Intro This text is the first of a series that details the exploitation of Windows software running under WINE. My focus is on CTF-like settings, but most information should apply in other situations as well.
+In this text i concentrate on general properties of processes running in a WINE environment, especially on the aspects that are relevant for exploit development. I will take a deeper look into actual exploitation and some WINE specific tricks in the later parts." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://schlafwandler.github.io/posts/attacking-wine-part-i/" /><meta property="article:published_time" content="2019-05-09T00:00:21&#43;02:00"/>
+<meta property="article:modified_time" content="2019-05-09T00:00:21&#43;02:00"/>
+
+<meta itemprop="name" content="Attacking applications running under WINE (Part I)">
+<meta itemprop="description" content="Examining the WINE environment Intro This text is the first of a series that details the exploitation of Windows software running under WINE. My focus is on CTF-like settings, but most information should apply in other situations as well.
+In this text i concentrate on general properties of processes running in a WINE environment, especially on the aspects that are relevant for exploit development. I will take a deeper look into actual exploitation and some WINE specific tricks in the later parts.">
+
+
+<meta itemprop="datePublished" content="2019-05-09T00:00:21&#43;02:00" />
+<meta itemprop="dateModified" content="2019-05-09T00:00:21&#43;02:00" />
+<meta itemprop="wordCount" content="4247">
+
+
+
+<meta itemprop="keywords" content="WINE," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Attacking applications running under WINE (Part I)"/>
+<meta name="twitter:description" content="Examining the WINE environment Intro This text is the first of a series that details the exploitation of Windows software running under WINE. My focus is on CTF-like settings, but most information should apply in other situations as well.
+In this text i concentrate on general properties of processes running in a WINE environment, especially on the aspects that are relevant for exploit development. I will take a deeper look into actual exploitation and some WINE specific tricks in the later parts."/>
+
+  </head>
+
+  <body class="ma0 avenir bg-near-white">
+
+    
+   
+  
+
+  <header>
+    <div class="bg-navy">
+      <nav class="pv3 ph3 ph4-ns" role="navigation">
+  <div class="flex-l justify-between items-center center">
+    <a href="https://schlafwandler.github.io" class="f3 fw2 hover-white no-underline white-90 dib">
+      Pointers to the void
+    </a>
+    <div class="flex-l items-center">
+      
+
+      
+        <ul class="pl0 mr3">
+          
+          <li class="list f5 f4-ns fw4 dib pr3">
+            <a class="hover-white no-underline white-90" href="/tags/" title=" page">
+              
+            </a>
+          </li>
+          
+        </ul>
+      
+      
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+  </div>
+</nav>
+
+    </div>
+  </header>
+
+
+
+    <main class="pb7" role="main">
+      
+  
+  <article class="flex-l flex-wrap justify-between mw8 center ph3">
+
+    <header class="mt4 w-100">
+      <p class="f6 b helvetica tracked">
+          
+        POSTS
+      </p>
+      <h1 class="f1 athelas mb1">Attacking applications running under WINE (Part I)</h1>
+      
+      <time class="f6 mv4 dib tracked" datetime="2019-05-09T00:00:21&#43;02:00">May 9, 2019</time>      
+      
+      
+    </header>
+
+    <section class="nested-copy-line-height lh-copy serif f4 nested-links nested-img mid-gray pr4-l w-two-thirds-l">
+
+<h2 id="examining-the-wine-environment">Examining the WINE environment</h2>
+
+<h3 id="intro">Intro</h3>
+
+<p>This text is the first of a <a href="https://schlafwandler.github.io/series/attacking-wine/">series</a> that details the exploitation of Windows software running under <a href="https://www.winehq.org/">WINE</a>.
+My focus is on CTF-like settings, but most information should apply in other situations as well.</p>
+
+<p>In this text i concentrate on general properties of processes running in a WINE environment, especially on the aspects that are relevant for exploit development.
+I will take a deeper look into actual exploitation and some WINE specific tricks in the later parts.</p>
+
+<h3 id="motivation">Motivation</h3>
+
+<p>My main motivation for writing this text is the relative lack of Windows exploitation challenges in CTF competitions.
+A major problem in creating Windows exploitation challenges as a CTF organiser is the difficulty of setting up a Windows environment where the vulnerable software can run, and keep on running, while being attacked by one team without interrupting the other teams exploitation efforts - all while not consuming too much resources on the CTF server.
+Licensing might also create problems with running a exploitation challenge in a windows VM.
+Running the challenge in WINE on a Linux CTF server could solve these problems.</p>
+
+<p>Apart from that, I found the topic of exploiting software running in the not-emulator WINE underexplored and it seemed like fun looking into it.</p>
+
+<h4 id="software-versions-used">Software versions used</h4>
+
+<ul>
+<li>wine-3.0.3 (Ubuntu 3.0.3-2)</li>
+<li>minGW (5.0.4-1)</li>
+<li>GNU gdb (Ubuntu 8.2-0ubuntu1) 8.2 / <a href="https://github.com/hugsy/gef">gef</a></li>
+</ul>
+
+<p>All tests were done on a Ubuntu 18.10</p>
+
+<h2 id="what-is-wine">What is WINE</h2>
+
+<blockquote>
+<p>Wine (recursive backronym for Wine Is Not an Emulator) is a compatibility layer that aims to allow computer programs (application software and computer games) developed for Microsoft Windows to run on Unix-like operating systems.
+Wine emulates the Windows runtime environment by translating Windows system calls into POSIX-compliant system calls, recreating the directory structure of Windows systems, and providing alternative implementations of Windows system libraries (<a href="https://en.wikipedia.org/wiki/Wine_(software)">from wikipedia</a>).</p>
+</blockquote>
+
+<p>So what we should expect is completely different from, for example, qemu:
+Not an emulator that creates a virtual machine in which the Windows application is then executed, but a translation layer between the application and the kernel.
+This layer creates an environment that makes the application &lsquo;feel&rsquo; like it&rsquo;s running on a Windows system, while in fact it is running on Linux - it just doesn&rsquo;t notice.</p>
+
+<h2 id="a-process-in-wine">A process in WINE</h2>
+
+<p>To explore the environment in which a process in WINE runs, let&rsquo;s use this small C program (called <a href="https://github.com/schlafwandler/attacking_wine/blob/master/Part_I/printdata.c">printdata.c</a> in the rest of this text):</p>
+
+<pre><code class="language-C">#include &lt;windows.h&gt;
+#include &lt;stdio.h&gt;
+
+// i686-w64-mingw32-gcc -o printdata.exe printdata.c
+// x86_64-w64-mingw32-gcc -o printdata64.exe printdata.c
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+{
+    printf(&quot;WinMain:\t\t%p\n&quot;,WinMain);
+
+    HMODULE kernel32 = LoadLibrary(&quot;kernel32.dll&quot;);
+    printf(&quot;kernel32.dll:\t\t%p\n&quot;,kernel32);
+
+    printf(&quot;GetProcAddress:\t\t%p\n&quot;,GetProcAddress);
+
+    HMODULE msvcrt = LoadLibrary(&quot;msvcrt.dll&quot;);
+    printf(&quot;msvcrt.dll:\t\t%p\n&quot;,msvcrt);
+
+    HMODULE ntdll = LoadLibrary(&quot;ntdll.dll&quot;);
+    printf(&quot;ntdll.dll:\t\t%p\n&quot;,ntdll);
+
+    int dummy;
+    printf(&quot;Stack:\t\t\t%p\n&quot;,&amp;dummy);
+
+    void *heap = malloc(128);
+    printf(&quot;Heap:\t\t\t%p\n&quot;,heap);
+
+    getchar();
+
+    return 0;
+}
+</code></pre>
+
+<p>What happens here?
+First the program outputs the address of its own &lsquo;main&rsquo; function.
+It then calls <a href="https://docs.microsoft.com/en-us/windows/desktop/api/libloaderapi/nf-libloaderapi-loadlibrarya">LoadLibrary</a> to get the handles (HMODULE) of some DLL files (kernel32.dll, msvcrt.dll and ntdll.dll).
+A HMODULE of a loaded DLL under windows is actually just its base address.
+So the output for each DLL is in fact the address in memory where this modules is loaded.
+Additionally, the address of the function <a href="https://docs.microsoft.com/en-us/windows/desktop/api/libloaderapi/nf-libloaderapi-getprocaddress">GetProcAddress</a> gets also displayed.
+Also, the local variable &lsquo;dummy&rsquo; is created (on the stack) and it&rsquo;s address also gets printed, giving us a hint where the stack is mapped.
+And at last some memory is allocated from the heap, and it&rsquo;s address written to the console.</p>
+
+<p><a href="https://github.com/schlafwandler/attacking_wine/blob/master/Part_I/printdata.exe">Compiled</a> and executed under WINE, it will create output like this:</p>
+
+<pre><code>WinMain:		00401550
+kernel32.dll:		7B420000
+GetProcAddress:		7B45B670
+msvcrt.dll:		7F940000
+ntdll.dll:		7BC10000
+Stack:			0065FDAC
+Heap:			00241440
+</code></pre>
+
+<p>Or this for the <a href="https://github.com/schlafwandler/attacking_wine/blob/master/Part_I/printdata64.exe">64-bit version</a>:</p>
+
+<pre><code>WinMain:		0000000000401570
+kernel32.dll:		000000007B420000
+GetProcAddress:		000000007B474DE0
+msvcrt.dll:		00007F65AE500000
+ntdll.dll:		000000007BC20000
+Stack:			000000000033FCAC
+Heap:			0000000000471BE0
+</code></pre>
+
+<p>Run both versions a few times. You will notice one thing:
+Most addresses are constant!
+In fact, msvcrt.dll seems to be the only module that does not have a predictable address.
+Neither the main executable, nor the other DLLs, nor the stack and the heap are placed at a randomised addresses.</p>
+
+<p>This is something one wants to avoid:
+If an attacker can predict the memory layout of a target process, writing an exploiting is much simpler.
+For this reason all modern operating systems try to randomise the load addresses of the stack, the heap, the executable binary and the libraries.
+But WINE does not do this.</p>
+
+<h2 id="examining-the-process">Examining the process</h2>
+
+<p>When you have a wine application running and take a look at the active processes (for example via htop) you will notice that the application is
+listed as just an other Linux process.
+This means we can examine it using gdb!
+(wine actually has it&rsquo;s own debugger, <a href="https://wiki.winehq.org/Wine_Developer%27s_Guide/Debugging_Wine">WineDbg</a>.
+But I will ignore it in this part and stick to gdb + gef)</p>
+
+<p>Launch the printdata.exe (32-bit) program from above and let it wait at the <code>getchar();</code>.
+Than find it&rsquo;s PID (via htop, ps|grep, pgrep or similar) and attach gdb with <code>gdb -p &lt;PID&gt;</code> (remember you have to set ptrace_scope to 0 under Ubuntu).</p>
+
+<p>If you use gdb with gef, you will see something like this (if you use an other gdb script or plain gdb, your output will look different):</p>
+
+<pre><code>$ gdb -p $(pgrep -f printdata.exe)
+GNU gdb (Ubuntu 8.2-0ubuntu1) 8.2
+Copyright (C) 2018 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later &lt;http://gnu.org/licenses/gpl.html&gt;
+
+[...]
+
+0xf7f3e049 in __kernel_vsyscall ()
+[ Legend: Modified register | Code | Heap | Stack | String ]
+──────────────────────────────────────────────────────────── registers ────
+$eax   : 0xfffffdfc
+$ebx   : 0x0065f8ac  →  0x0000000c
+$ecx   : 0x1
+$edx   : 0xffffffff
+$esp   : 0x0065f830  →  0x0065f988  →  0x0065f9a8  →  0x0065faa8  →  0x0065fb08  →  0x0065fb78  →  0x0065fbf8  →  0x0065fc88
+$ebp   : 0x0065f988  →  0x0065f9a8  →  0x0065faa8  →  0x0065fb08  →  0x0065fb78  →  0x0065fbf8  →  0x0065fc88  →  0x0065fcd8
+$esi   : 0xffffffff
+$edi   : 0xc
+$eip   : 0xf7f3e049  →  0xc3595a5d  →  0x00000000
+$eflags: [zero carry PARITY adjust SIGN trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0023 $ss: 0x002b $ds: 0x002b $es: 0x002b $fs: 0x006b $gs: 0x0063
+──────────────────────────────────────────────────────────────── stack ────
+0x0065f830│+0x0000: 0x0065f988  →  0x0065f9a8  →  0x0065faa8  →  0x0065fb08  →  0x0065fb78  →  0x0065fbf8  →  0x0065fc88	 ← $esp
+0x0065f834│+0x0004: 0xffffffff
+0x0065f838│+0x0008: 0x00000001
+0x0065f83c│+0x000c: 0xf7c34da7  →  0xfff0003d (&quot;=&quot;?)
+0x0065f840│+0x0010: 0x0065f860  →  0x0065f8ac  →  0x0000000c
+0x0065f844│+0x0014: 0x7b63ae18  →  0x7b63ad20  →  0x00000001
+0x0065f848│+0x0018: 0x0065f988  →  0x0065f9a8  →  0x0065faa8  →  0x0065fb08  →  0x0065fb78  →  0x0065fbf8  →  0x0065fc88
+0x0065f84c│+0x001c: 0x7b430198  →  0xc085595a  →  0x00000000
+────────────────────────────────────────────────────────── code:x86:32 ────
+   0xf7f3e043 &lt;__kernel_vsyscall+3&gt; mov    ebp, esp
+   0xf7f3e045 &lt;__kernel_vsyscall+5&gt; sysenter
+   0xf7f3e047 &lt;__kernel_vsyscall+7&gt; int    0x80
+ → 0xf7f3e049 &lt;__kernel_vsyscall+9&gt; pop    ebp
+   0xf7f3e04a &lt;__kernel_vsyscall+10&gt; pop    edx
+   0xf7f3e04b &lt;__kernel_vsyscall+11&gt; pop    ecx
+   0xf7f3e04c &lt;__kernel_vsyscall+12&gt; ret
+   0xf7f3e04d                  nop
+   0xf7f3e04e                  nop
+──────────────────────────────────────────────────────────────── trace ────
+[#0] 0xf7f3e049 → __kernel_vsyscall()
+[#1] 0xf7c34da7 → poll()
+[#2] 0x7b4302b9 → add esp, 0x10
+[#3] 0x7b4328d6 → ReadConsoleInputW()
+[#4] 0x7b43b675 → test eax, eax
+[#5] 0x7b433adf → ReadConsoleW()
+[#6] 0x7b433cd5 → ReadConsoleA()
+[#7] 0x7b43f140 → ReadFile()
+[#8] 0x7f96c4e5 → MSVCRT__read()
+[#9] 0x7f96f968 → MSVCRT(float, int, long, bool, float __restrict)()
+───────────────────────────────────────────────────────────────────────────
+gef➤
+</code></pre>
+
+<p>This tells us a few things:</p>
+
+<ul>
+<li>It obviously works: We actually can attach gdb to the application running in WINE.</li>
+<li>Some functions in the trace (like <a href="https://docs.microsoft.com/en-us/windows/console/readconsole">ReadConsoleW</a> and <a href="https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-readfile">ReadFile</a>) are clearly windows functions.
+So we are inside the windows application, not just some WINE process that forms some sort of translation layer.</li>
+<li>The addresses of these functions in the trace are higher, but not that far away from the addresses printdata gave us for their dlls.
+Exactly like we expect for a function exported by a module loaded into the processes virtual address space.
+Just that the windows program thinks that these modules are windows dlls, even though we are inspecting a Linux process.</li>
+<li>ESP is at 0x0065f830 - quite close the the address of the stack variable printdata gave us.</li>
+<li>We stopped the printdata during a syscall - as we would expect in a regular Linux process waiting for some input (via getchar()).</li>
+</ul>
+
+<p>All in all, we see confirmed what WINE&rsquo;s description already told us:
+The windows program runs on the actual (&lsquo;metal&rsquo;) CPU, not in some emulated or virtual environment.
+And the windows app runs in a Linux process, obviously with some compatibility layer that manages it&rsquo;s interactions with the rest of the system.
+But all the addresses the windows program sees, all the memory it reads, writes, or executes is real memory, without any abstraction layer in between.</p>
+
+<p>Let&rsquo;s take a closer look at the memory of the printdata.exe process via gdb&rsquo;s <code>vmmap</code> command:</p>
+
+<pre><code>gef➤  vmmap 
+Start      End        Offset     Perm Path
+0x00110000 0x00120000 0x00000000 rw- 
+0x00120000 0x00220000 0x00000000 --- 
+0x00220000 0x00221000 0x00000000 rw- 
+0x00221000 0x00222000 0x00000000 --- 
+0x00222000 0x00230000 0x00000000 --- 
+0x00230000 0x00233000 0x00000000 rw- 
+0x00233000 0x00240000 0x00000000 --- 
+0x00240000 0x00250000 0x00000000 rw- 
+0x00250000 0x00350000 0x00000000 --- 
+0x00350000 0x00400000 0x00000000 --- 
+0x00400000 0x00401000 0x00000000 r-- /[path]/printdata.exe
+0x00401000 0x00403000 0x00000000 r-x 
+0x00403000 0x00404000 0x00000000 rw- 
+0x00404000 0x00405000 0x00002000 r-- /[path]/printdata.exe
+0x00405000 0x00408000 0x00000000 rw- 
+0x00408000 0x00409000 0x00003000 rw- /[path]/printdata.exe
+0x00409000 0x0045f000 0x00000000 r-- 
+0x0045f000 0x00460000 0x00056000 r-- /[path]/printdata.exe
+0x00460000 0x00462000 0x00000000 --- 
+0x00462000 0x00660000 0x00000000 rw- 
+0x00660000 0x20000000 0x00000000 --- 
+0x3fff8000 0x3fffc000 0x00000000 rw- 
+0x3ffff000 0x40000000 0x00000000 rw- 
+0x7b400000 0x7b410000 0x00000000 r-- /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+0x7b410000 0x7b420000 0x00010000 r-x /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+0x7b420000 0x7b421000 0x00000000 rw- 
+0x7b421000 0x7b48b000 0x00021000 r-x /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+0x7b48b000 0x7b638000 0x0008b000 r-- /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+0x7b638000 0x7b639000 0x00238000 --- /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+0x7b639000 0x7b63b000 0x00238000 r-- /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+0x7b63b000 0x7b7eb000 0x0023a000 rw- /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+0x7b7eb000 0x7b7ec000 0x00000000 rw- 
+0x7bc00000 0x7bc0e000 0x00000000 r-- /usr/lib/i386-linux-gnu/wine/ntdll.dll.so
+0x7bc0e000 0x7bc10000 0x0000e000 r-x /usr/lib/i386-linux-gnu/wine/ntdll.dll.so
+0x7bc10000 0x7bc11000 0x00000000 rw- 
+0x7bc11000 0x7bca9000 0x00011000 r-x /usr/lib/i386-linux-gnu/wine/ntdll.dll.so
+0x7bca9000 0x7bcdf000 0x000a9000 r-- /usr/lib/i386-linux-gnu/wine/ntdll.dll.so
+0x7bcdf000 0x7bce0000 0x000df000 --- /usr/lib/i386-linux-gnu/wine/ntdll.dll.so
+0x7bce0000 0x7bce1000 0x000df000 r-- /usr/lib/i386-linux-gnu/wine/ntdll.dll.so
+0x7bce1000 0x7bceb000 0x000e0000 rw- /usr/lib/i386-linux-gnu/wine/ntdll.dll.so
+0x7bceb000 0x7bcfe000 0x00000000 rw- 
+0x7c000000 0x7c001000 0x00000000 r-- /usr/lib/wine/wine
+0x7c001000 0x7c002000 0x00001000 r-x /usr/lib/wine/wine
+0x7c002000 0x7c003000 0x00002000 r-- /usr/lib/wine/wine
+0x7c003000 0x7c004000 0x00002000 r-- /usr/lib/wine/wine
+0x7c004000 0x7c005000 0x00003000 rw- /usr/lib/wine/wine
+0x7c386000 0x7c3a8000 0x00000000 rw- [heap]
+0x7f8de000 0x7f901000 0x00000000 r-x /lib/i386-linux-gnu/libtinfo.so.6.1
+0x7f901000 0x7f903000 0x00022000 r-- /lib/i386-linux-gnu/libtinfo.so.6.1
+0x7f903000 0x7f904000 0x00024000 rw- /lib/i386-linux-gnu/libtinfo.so.6.1
+0x7f904000 0x7f92c000 0x00000000 r-x /lib/i386-linux-gnu/libncurses.so.6.1
+0x7f92c000 0x7f92d000 0x00027000 r-- /lib/i386-linux-gnu/libncurses.so.6.1
+0x7f92d000 0x7f92e000 0x00028000 rw- /lib/i386-linux-gnu/libncurses.so.6.1
+0x7f92e000 0x7f93f000 0x00000000 r-- /usr/lib/i386-linux-gnu/wine/msvcrt.dll.so
+0x7f93f000 0x7f940000 0x00011000 r-x /usr/lib/i386-linux-gnu/wine/msvcrt.dll.so
+0x7f940000 0x7f941000 0x00000000 rw- 
+0x7f941000 0x7f9b4000 0x00013000 r-x /usr/lib/i386-linux-gnu/wine/msvcrt.dll.so
+0x7f9b4000 0x7f9dd000 0x00086000 r-- /usr/lib/i386-linux-gnu/wine/msvcrt.dll.so
+0x7f9dd000 0x7f9de000 0x000ae000 r-- /usr/lib/i386-linux-gnu/wine/msvcrt.dll.so
+0x7f9de000 0x7f9e7000 0x000af000 rw- /usr/lib/i386-linux-gnu/wine/msvcrt.dll.so
+0x7f9e7000 0x7f9e8000 0x00000000 rw- 
+[...]
+0xf7b8c000 0xf7ba5000 0x00000000 r-- /lib/i386-linux-gnu/libc-2.28.so
+0xf7ba5000 0xf7cf6000 0x00019000 r-x /lib/i386-linux-gnu/libc-2.28.so
+0xf7cf6000 0xf7d66000 0x0016a000 r-- /lib/i386-linux-gnu/libc-2.28.so
+0xf7d66000 0xf7d67000 0x001da000 --- /lib/i386-linux-gnu/libc-2.28.so
+0xf7d67000 0xf7d69000 0x001da000 r-- /lib/i386-linux-gnu/libc-2.28.so
+0xf7d69000 0xf7d6a000 0x001dc000 rw- /lib/i386-linux-gnu/libc-2.28.so
+0xf7d6a000 0xf7d6d000 0x00000000 rw- 
+[...]
+0xf7f50000 0xf7f80000 0x00000000 --- 
+0xf7f80000 0xf7f82000 0x00000000 rw- 
+0xf7f82000 0xf7f85000 0x00000000 r-- [vvar]
+0xf7f85000 0xf7f87000 0x00000000 r-x [vdso]
+0xf7f87000 0xf7f88000 0x00000000 r-- /lib/i386-linux-gnu/ld-2.28.so
+0xf7f88000 0xf7fa4000 0x00001000 r-x /lib/i386-linux-gnu/ld-2.28.so
+0xf7fa4000 0xf7fae000 0x0001d000 r-- /lib/i386-linux-gnu/ld-2.28.so
+0xf7faf000 0xf7fb0000 0x00027000 r-- /lib/i386-linux-gnu/ld-2.28.so
+0xf7fb0000 0xf7fb1000 0x00028000 rw- /lib/i386-linux-gnu/ld-2.28.so
+0xf7fc0000 0xffca0000 0x00000000 --- 
+0xffca0000 0xffea0000 0x00000000 rw- 
+0xfffaa000 0xfffcc000 0x00000000 rw- [stack]
+0xfffd0000 0xffff0000 0x00000000 --- 
+</code></pre>
+
+<p>There are a few things to notice:</p>
+
+<ul>
+<li>No readable/writable/executable (rwx) memory. SO SAD!</li>
+<li>The windows executable (printdata.exe) with its sections is mapped beginning at 0x00400000</li>
+<li>The wine executable (/usr/lib/wine/wine) is loaded at 0x7c000000</li>
+<li>There is a region marked as stack (at 0xfffaa000), but it&rsquo;s different from the stack used by the application (the printdata output was 0x0065FDAC, which is in the region from 0x00462000 to 0x00660000)</li>
+<li>Same goes for the heap: GDB sees one at 0x7c386000, but the application uses a different heap beginning at 0x00240000</li>
+<li>There are many libraries expected in a standard linux process, like libc-2.28, ld-2.28 and libncurses (here all x86 version)</li>
+<li>There are other libraries you do not expect at all on a linux system, like kernel32.dll.so, ntdll.dll.so and msvcrt.dll.so</li>
+</ul>
+
+<p>All in all it looks like a linux process that has a windows PE executable mapped into memory and also includes some special libraries.</p>
+
+<p>If you restart the process and look at it again, you will see that that the linux libraries are mapped to different addresses each time,
+while the addresses of the .dll.so libraries mostly remain the same.
+Mostly, because there is one exception to this rule: msvcrt.dll.so also gets randomised
+(i don&rsquo;t know why msvcrt is the only library that gets ASLR).</p>
+
+<p>And there is one more module with a static address:
+The wine binary itself (/usr/lib/wine/wine) is always loaded at 0x7c000000.
+That&rsquo;s not not to surprising given that neither the 32- nor the 64-bit wine binaries are position independent:</p>
+
+<pre><code>$ checksec /usr/lib/wine/wine
+[*] '/usr/lib/wine/wine'
+    Arch:     i386-32-little
+    RELRO:    Full RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x7c000000)
+    RUNPATH:  '$ORIGIN/../i386-linux-gnu/wine:/usr/lib/i386-linux-gnu/wine'
+$ checksec /usr/lib/wine/wine64
+[*] '/usr/lib/wine/wine64'
+    Arch:     amd64-64-little
+    RELRO:    Full RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x7c000000)
+    RUNPATH:  '$ORIGIN/../x86_64-linux-gnu/wine:/usr/lib/x86_64-linux-gnu/wine'
+</code></pre>
+
+<p>The memory map of a 64-bit wine process is little different:
+The randomisation of msvcrt.dll.so is stronger, the base addresses of stack and heap change, but the rest basically stays the same.
+Even the addresses of the non-randomised modules are unchanged.</p>
+
+<p>This gives us a nice collection of predictable modules and memory regions:</p>
+
+<ul>
+<li>The windows binary (always at 0x00400000)</li>
+<li>The wine binary (always at 0x7c000000)</li>
+<li>kernel32.dll.so (at 0x7b400000)</li>
+<li>ntdll.dll.so (at 0x7bc00000)</li>
+<li>The stack (starting at 0x00660000/0x0000000000340000 growing downward)</li>
+<li>The heap (starting at 0x00240000/0x0000000000470000)</li>
+</ul>
+
+<h2 id="wine-s-dll-so-files">Wine&rsquo;s .dll.so files</h2>
+
+<h3 id="wine-libraries-on-disk">Wine libraries on disk</h3>
+
+<p>So what are these strange .dll.so libraries?
+Let&rsquo;s take a closer look at kernel32.dll.so, here located at /usr/lib/i386-linux-gnu/wine/kernel32.dll.so.
+The <code>file</code> command identifies it as</p>
+
+<pre><code>$ file /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+/usr/lib/i386-linux-gnu/wine/kernel32.dll.so: ELF 32-bit LSB shared object, Intel 80386, version 1 (SYSV), dynamically linked, BuildID[sha1]=0e2bf3bfa08679f57c2a8126f761cdfcb25edc76, stripped
+</code></pre>
+
+<p>So it&rsquo;s an ELF file, and we can examine it with <code>readelf</code> or <code>objdump</code>.</p>
+
+<p>Here are it&rsquo;s segments:</p>
+
+<pre><code>$ readelf -l /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+
+Elf-Datei-Typ ist DYN (geteilte Objektadatei)
+Entry point 0x7b4213a0
+There are 7 program headers, starting at offset 52
+
+Programm-Header:
+  Typ            Offset   VirtAdr    PhysAdr    DateiGr SpeiGr  Flg Ausr.
+  LOAD           0x000000 0x7b400000 0x7b400000 0x234d9c 0x234d9c R E 0x1000
+  LOAD           0x2355b8 0x7b6365b8 0x7b6365b8 0x1b0da0 0x1b1310 RW  0x1000
+  DYNAMIC        0x236d20 0x7b637d20 0x7b637d20 0x000f8 0x000f8 RW  0x4
+  NOTE           0x000114 0x7b400114 0x7b400114 0x00024 0x00024 R   0x4
+  GNU_EH_FRAME   0x214cfc 0x7b614cfc 0x7b614cfc 0x0515c 0x0515c R   0x4
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RW  0x10
+  GNU_RELRO      0x2355b8 0x7b6365b8 0x7b6365b8 0x01a48 0x01a48 R   0x1
+
+</code></pre>
+
+<p>Notice that the virtual address of the LOAD segments is set to a non-zero value, not 0x00 like in a position independent file.</p>
+
+<p>And here the symbols:</p>
+
+<pre><code>$ readelf -s /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+Symbol table '.dynsym' contains 1108 entries:
+   Num:    Wert   Size Typ     Bind   Vis      Ndx Name
+     0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+     1: 00000000     0 FUNC    GLOBAL DEFAULT  UND setsockopt@GLIBC_2.0 (2)
+     2: 00000000     0 FUNC    GLOBAL DEFAULT  UND __ctype_toupper_loc@GLIBC_2.3 (3)
+     3: 00000000     0 FUNC    GLOBAL DEFAULT  UND setbuf@GLIBC_2.0 (2)
+     4: 00000000     0 FUNC    GLOBAL DEFAULT  UND dup2@GLIBC_2.0 (2)
+     5: 00000000     0 FUNC    GLOBAL DEFAULT  UND wine_get_build_dir@WINE_1.0 (4)
+     6: 00000000     0 FUNC    GLOBAL DEFAULT  UND strcmp@GLIBC_2.0 (2)
+     7: 00000000     0 FUNC    GLOBAL DEFAULT  UND wine_dbgstr_an@WINE_1.0 (4)
+     8: 00000000     0 FUNC    GLOBAL DEFAULT  UND open64@GLIBC_2.1 (5)
+     9: 00000000     0 FUNC    GLOBAL DEFAULT  UND wine_dlsym@WINE_1.0 (4)
+    10: 00000000     0 FUNC    GLOBAL DEFAULT  UND __wine_dll_register@WINE_1.0 (4)
+    11: 00000000     0 FUNC    GLOBAL DEFAULT  UND read@GLIBC_2.0 (2)
+    12: 00000000     0 NOTYPE  WEAK   DEFAULT  UND _ITM_deregisterTMCloneTab
+
+[some more functions]
+
+   113: 00000000     0 FUNC    GLOBAL DEFAULT  UND opendir@GLIBC_2.0 (2)
+   114: 00000000     0 FUNC    GLOBAL DEFAULT  UND __ctype_tolower_loc@GLIB
+C_2.3 (3)
+   115: 00000000     0 FUNC    GLOBAL DEFAULT  UND __assert_fail@GLIBC_2.0 
+(2)
+   116: 00000000     0 FUNC    GLOBAL DEFAULT  UND __ctype_b_loc@GLIBC_2.3 
+(3)
+   117: 7b47ce50    94 FUNC    GLOBAL DEFAULT   12 GetDaylightFlag
+   118: 7b46ac90   187 FUNC    GLOBAL DEFAULT   12 GetNumaProcessorNode
+   119: 7b4838d0   358 FUNC    GLOBAL DEFAULT   12 GetDriveTypeW
+   120: 7b47a2c0   179 FUNC    GLOBAL DEFAULT   12 OpenThread
+   121: 7b436840   111 FUNC    GLOBAL DEFAULT   12 GetConsoleFontInfo
+   122: 7b432db0   174 FUNC    GLOBAL DEFAULT   12 SetConsoleTitleA
+   123: 7b471ba0   577 FUNC    GLOBAL DEFAULT   12 EnumResourceTypesW
+   124: 7b43f550    97 FUNC    GLOBAL DEFAULT   12 CancelSynchronousIo
+   125: 7b47e860    44 FUNC    GLOBAL DEFAULT   12 Process32First
+   126: 7b42f8e0    82 FUNC    GLOBAL DEFAULT   12 Beep
+
+[many more functions]
+
+   895: 7b42ca60   105 FUNC    GLOBAL DEFAULT   12 TransmitCommChar
+   896: 7b47f490    53 FUNC    GLOBAL DEFAULT   12 VirtualQuery
+   897: 7b43f090   245 FUNC    GLOBAL DEFAULT   12 WriteFileGather
+   898: 7b43e140    22 FUNC    GLOBAL DEFAULT   12 IsThreadAFiber
+   899: 7b472260  1049 FUNC    GLOBAL DEFAULT   12 EnumResourceNamesW
+   900: 7b4604b0    51 FUNC    GLOBAL DEFAULT   12 GetSystemWindowsDirectory
+   901: 7b47a4a0    73 FUNC    GLOBAL DEFAULT   12 SetThreadContext
+   902: 7b447c60   189 FUNC    GLOBAL DEFAULT   12 GetPhysicallyInstalledSys
+
+[more functions]
+</code></pre>
+
+<p>At the beginning, kernel32.dll.so imports some functions, most of them from glibc.
+But then it exports ~1000 functions, named exactly like the exported functions from kernel32.dll (the Windows original, without the .so).
+There are also some exported functions normally not expected in a Windows kernel32.dll, like <code>wine_get_dos_file_name</code>,
+but for the most part it seems like the ELF shared object is exporting kernel32.dll-like functions.</p>
+
+<p>Let&rsquo;s take a closer look:
+remember how printdata.exe displayed the address of GetProcAddress from its viewpoint running in wine?</p>
+
+<pre><code>GetProcAddress:		7B45B670
+</code></pre>
+
+<p>And now the exported function from kernel32.dll.so:</p>
+
+<pre><code>$ readelf -s /usr/lib/i386-linux-gnu/wine/kernel32.dll.so|grep GetProcAddress
+   393: 7b45b670   183 FUNC    GLOBAL DEFAULT   12 GetProcAddress
+</code></pre>
+
+<p>The same on x86-64. In memory:</p>
+
+<pre><code>GetProcAddress:		000000007B474DE0
+</code></pre>
+
+<p>And on disk:</p>
+
+<pre><code>$ readelf -s /usr/lib/x86_64-linux-gnu/wine/kernel32.dll.so | grep GetProcAddress
+   389: 000000007b474de0   387 FUNC    GLOBAL DEFAULT   12 GetProcAddress
+</code></pre>
+
+<p>So we have a easy way to resolve the address for each Windows function implemented by wine in memory and on disk.
+And: it&rsquo;s an exported ELF symbol.
+So we can set breakpoints on it:</p>
+
+<pre><code>$ cat helloworld.c
+#include &lt;windows.h&gt;
+
+// i686-w64-mingw32-gcc -o helloworld.exe helloworld.c
+// x86_64-w64-mingw32-gcc -o helloworld64.exe helloworld.c
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+{
+    MessageBox(0,&quot;Hello World&quot;,&quot;Hello World!&quot;,0);
+    return 0;
+}
+$ i686-w64-mingw32-gcc -o helloworld.exe helloworld.c
+$ gdb /usr/lib/wine/wine
+GNU gdb (Ubuntu 8.1-0ubuntu3) 8.1.0.20180409-git
+
+[...]
+
+Reading symbols from /usr/lib/wine/wine...(no debugging symbols found)...done.
+(gdb) b MessageBoxA
+Function &quot;MessageBoxA&quot; not defined.
+Make breakpoint pending on future shared library load? (y or [n]) y
+Haltepunkt 1 (MessageBoxA) anstehend.
+(gdb) run helloworld.exe
+Starting program: /usr/lib/wine/wine helloworld.exe
+
+[...]
+
+Thread 1 &quot;helloworld.exe&quot; hit Breakpoint 1, 0x7fa4f5bf in MessageBoxA ()
+   from /usr/lib/wine/../i386-linux-gnu/wine/user32.dll.so
+(gdb) 
+</code></pre>
+
+<p>(Note: both gef and peda seems to cause problems with pending breakpoints (breakpoints in a library not yet loaded), so i used plain gdb here)</p>
+
+<h3 id="wine-libraries-in-memory">Wine libraries in memory</h3>
+
+<p>Let&rsquo;s go back to printdata.exe running under gdb.
+The <code>vmmap</code> output concerning kernel32.dll.so was</p>
+
+<pre><code>0x7b400000 0x7b410000 0x00000000 r-- /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+0x7b410000 0x7b420000 0x00010000 r-x /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+0x7b420000 0x7b421000 0x00000000 rw- 
+0x7b421000 0x7b48b000 0x00021000 r-x /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+0x7b48b000 0x7b638000 0x0008b000 r-- /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+0x7b638000 0x7b639000 0x00238000 --- /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+0x7b639000 0x7b63b000 0x00238000 r-- /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+0x7b63b000 0x7b7eb000 0x0023a000 rw- /usr/lib/i386-linux-gnu/wine/kernel32.dll.so
+</code></pre>
+
+<p>Notice that strange region at 0x7b420000, that does not have an file offset and is seemingly not associated with kernel32.dll.so?</p>
+
+<p>Remember what printdata gave us as the HMODULE (the base address of the module in memory) of kernel32.dll from the app&rsquo;s perspective?</p>
+
+<pre><code>kernel32.dll:		7B420000
+</code></pre>
+
+<p>0x7B420000&hellip; which is exactly the address of this strange piece of memory between the other kernel32.dll.so segments.</p>
+
+<p>Let&rsquo;s take a closer look:</p>
+
+<pre><code>gef➤  x/128bx 0x7b420000
+0x7b420000:	0x4d	0x5a	0x90	0x00	0x03	0x00	0x00	0x00
+0x7b420008:	0x04	0x00	0x00	0x00	0xff	0xff	0x00	0x00
+0x7b420010:	0xb8	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x7b420018:	0x40	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x7b420020:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x7b420028:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x7b420030:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x7b420038:	0x00	0x00	0x00	0x00	0x40	0x00	0x00	0x00
+0x7b420040:	0x50	0x45	0x00	0x00	0x4c	0x01	0x02	0x00
+0x7b420048:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x7b420050:	0x00	0x00	0x00	0x00	0xe0	0x00	0x02	0x21
+0x7b420058:	0x0b	0x01	0x07	0x0a	0x00	0xa0	0x21	0x00
+0x7b420060:	0x00	0x10	0x1b	0x00	0x00	0x00	0x00	0x00
+0x7b420068:	0xa0	0x77	0x06	0x00	0x00	0x10	0x00	0x00
+0x7b420070:	0x00	0xb0	0x21	0x00	0x00	0x00	0x42	0x7b
+0x7b420078:	0x00	0x10	0x00	0x00	0x00	0x10	0x00	0x00
+</code></pre>
+
+<p>What do we see here?</p>
+
+<p>The 0x4d 0x5a bytes at the beginning are the letters &ldquo;MZ&rdquo; - the signature of an <a href="https://www.nirsoft.net/kernel_struct/vista/IMAGE_DOS_HEADER.html">IMAGE_DOS_HEADER</a> structure.
+The e_lfanew member of this structure tells us where the PE header begins. It is located at offset 0x18, so with the structure starting at 0x7b420000,
+we can find it at 0x7b420018.
+Its value here is 0x00000040, informing us the the PE header is located at 0x7b420040.
+There we find the <a href="https://docs.microsoft.com/en-us/windows/desktop/api/winnt/ns-winnt-_image_nt_headers">IMAGE_NT_HEADERS</a> structure (note the 0x50 0x45 0x00 0x00 or &ldquo;PE\x00\x00&rdquo; signature).</p>
+
+<p>Although WINE libraries are ELF files, WINE creates the complete PE headers for each .dll.so in memory at run time
+(some more details of this process are provided <a href="https://wiki.winehq.org/Wine_Developer%27s_Guide/Architecture_Overview#Wine_builtin_DLLs:_about_Relays.2C_Thunks.2C_and_DLL_descriptors">here</a>).
+If you like, you can follow the references from IMAGE_NT_HEADERS till you reach the IAT or the resources.
+They are all there - just somewhat differently arranged.</p>
+
+<p>The main takeaway here is that even though the libraries do not have PE headers on disk, the PE headers are present for all Windows dlls in memory and can be acquired in the usual ways.
+That means that every trick making use of these headers will (probably) still work under wine.</p>
+
+<h2 id="executing-shellcode">Executing shellcode</h2>
+
+<p>So, if there are these Windows-emulating DLLs and PE structures in the WINE process, can we run a windows shellcode inside?
+And, if an application running under WINE is also a Linux process, can we run Linux shellcode inside?</p>
+
+<p>Yes. To both. Even inside the same process.</p>
+
+<p>Have a look at this <a href="https://github.com/schlafwandler/attacking_wine/blob/master/Part_I/exec_shellcode.c">beautiful abomination</a>:</p>
+
+<pre><code class="language-C">#include &lt;windows.h&gt;
+#include &lt;stdio.h&gt;
+
+// i686-w64-mingw32-gcc -o exec_shellcode.exe exec_shellcode.c
+
+unsigned char win32_messagebox[] = {
+  0x55, 0x8b, 0xec, 0x83, 0xec, 0x74, 0x64, 0xa1, 0x30, 0x00, 0x00, 0x00,
+  0x53, 0x8b, 0x40, 0x0c, 0xc7, 0x45, 0xc4, 0x2a, 0x2c, 0x00, 0x00, 0x8b,
+  0x40, 0x0c, 0xc7, 0x45, 0xc8, 0x50, 0x2a, 0x00, 0x00, 0x8b, 0x00, 0xc7,
+  0x45, 0xcc, 0xa4, 0xf1, 0x00, 0x00, 0x8b, 0x00, 0x8b, 0x48, 0x18, 0x8b,
+  0x41, 0x3c, 0x8b, 0x44, 0x08, 0x78, 0x03, 0xc1, 0x8b, 0x58, 0x20, 0x8b,
+  0x50, 0x18, 0x03, 0xd9, 0x89, 0x55, 0xfc, 0x85, 0xd2, 0x74, 0x5e, 0x8b,
+  0x50, 0x1c, 0x56, 0x8b, 0x70, 0x24, 0x57, 0x89, 0x55, 0xf4, 0x03, 0xf1,
+  0x0f, 0xb7, 0x06, 0x8b, 0x3b, 0x8d, 0x04, 0x82, 0x03, 0xf9, 0x8b, 0x04,
+  0x08, 0x03, 0xc1, 0x8d, 0x5b, 0x04, 0x89, 0x45, 0xf8, 0x33, 0xd2, 0xeb,
+  0x0d, 0x6b, 0xd2, 0x1f, 0x0f, 0xb6, 0xc0, 0x66, 0x33, 0xd0, 0x0f, 0xb7,
+  0xd2, 0x47, 0x8a, 0x07, 0x84, 0xc0, 0x75, 0xed, 0x0f, 0xb7, 0xfa, 0x8b,
+  0x55, 0xf8, 0x33, 0xc0, 0x39, 0x7c, 0x85, 0xc4, 0x75, 0x04, 0x89, 0x54,
+  0x85, 0xc4, 0x40, 0x83, 0xf8, 0x03, 0x7c, 0xf0, 0x8b, 0x55, 0xf4, 0x83,
+  0xc6, 0x02, 0xff, 0x4d, 0xfc, 0x75, 0xb1, 0x5f, 0x5e, 0x8d, 0x45, 0xe8,
+  0x33, 0xdb, 0x50, 0xc7, 0x45, 0xe8, 0x55, 0x73, 0x65, 0x72, 0xc7, 0x45,
+  0xec, 0x33, 0x32, 0x2e, 0x64, 0x66, 0xc7, 0x45, 0xf0, 0x6c, 0x6c, 0x88,
+  0x5d, 0xf2, 0xff, 0x55, 0xc4, 0x8d, 0x4d, 0xd0, 0x51, 0x50, 0xc7, 0x45,
+  0xd0, 0x4d, 0x65, 0x73, 0x73, 0xc7, 0x45, 0xd4, 0x61, 0x67, 0x65, 0x42,
+  0xc7, 0x45, 0xd8, 0x6f, 0x78, 0x41, 0x00, 0xff, 0x55, 0xc8, 0x53, 0x8d,
+  0x4d, 0xdc, 0x51, 0x8d, 0x4d, 0x8c, 0x51, 0x53, 0xc7, 0x45, 0x8c, 0x54,
+  0x68, 0x69, 0x73, 0xc7, 0x45, 0x90, 0x20, 0x4d, 0x65, 0x73, 0xc7, 0x45,
+  0x94, 0x73, 0x61, 0x67, 0x65, 0xc7, 0x45, 0x98, 0x42, 0x6f, 0x78, 0x20,
+  0xc7, 0x45, 0x9c, 0x77, 0x61, 0x73, 0x20, 0xc7, 0x45, 0xa0, 0x63, 0x72,
+  0x65, 0x61, 0xc7, 0x45, 0xa4, 0x74, 0x65, 0x64, 0x20, 0xc7, 0x45, 0xa8,
+  0x75, 0x73, 0x69, 0x6e, 0xc7, 0x45, 0xac, 0x67, 0x20, 0x61, 0x20, 0xc7,
+  0x45, 0xb0, 0x77, 0x69, 0x6e, 0x64, 0xc7, 0x45, 0xb4, 0x6f, 0x77, 0x73,
+  0x20, 0xc7, 0x45, 0xb8, 0x73, 0x68, 0x65, 0x6c, 0xc7, 0x45, 0xbc, 0x6c,
+  0x63, 0x6f, 0x64, 0x66, 0xc7, 0x45, 0xc0, 0x65, 0x2e, 0x88, 0x5d, 0xc2,
+  0xc7, 0x45, 0xdc, 0x4d, 0x65, 0x73, 0x73, 0xc7, 0x45, 0xe0, 0x61, 0x67,
+  0x65, 0x42, 0x66, 0xc7, 0x45, 0xe4, 0x6f, 0x78, 0x88, 0x5d, 0xe6, 0xff,
+  0xd0, 0x5b, 0xc9, 0xc3
+};
+
+unsigned char linux32_printline[] = {
+  0x31, 0xc0, 0x31, 0xdb, 0x31, 0xd2, 0xb0, 0x04, 0xb3, 0x02, 0xeb, 0x06,
+  0x59, 0xb2, 0x2f, 0xcd, 0x80, 0xc3, 0xe8, 0xf5, 0xff, 0xff, 0xff, 0x54,
+  0x68, 0x69, 0x73, 0x20, 0x6c, 0x69, 0x6e, 0x65, 0x20, 0x77, 0x61, 0x73,
+  0x20, 0x70, 0x72, 0x69, 0x6e, 0x74, 0x65, 0x64, 0x20, 0x75, 0x73, 0x69,
+  0x6e, 0x67, 0x20, 0x61, 0x73, 0x20, 0x6c, 0x69, 0x6e, 0x75, 0x78, 0x20,
+  0x73, 0x68, 0x65, 0x6c, 0x6c, 0x63, 0x6f, 0x64, 0x65, 0x0a
+};
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+{
+    LPVOID exec_buffer = VirtualAlloc(NULL,sizeof(win32_messagebox),MEM_COMMIT,PAGE_EXECUTE_READWRITE);
+    void (*pcode)() = (void(*)())exec_buffer;
+
+    memcpy(exec_buffer,linux32_printline,sizeof(linux32_printline));
+    pcode();
+
+    memcpy(exec_buffer,win32_messagebox,sizeof(win32_messagebox));
+    pcode();
+
+    return 0;
+}
+
+</code></pre>
+
+<p>What does it do?
+It allocates a rwx buffer, copies the Linux shellcode into it, and executes it.
+Than the code uses the same buffer for the Windows shellcode, which is executed as well.</p>
+
+<p>The internal workings of both shellcodes are totally different:</p>
+
+<p>The windows shellcode finds the PE header of kernel32.dll in memory, even though here it&rsquo;s actually the runtime generated header of kernel32.dll.so.
+It than resolves <a href="https://docs.microsoft.com/en-us/windows/desktop/api/libloaderapi/nf-libloaderapi-loadlibrarya">LoadLibrary</a> and <a href="https://docs.microsoft.com/en-us/windows/desktop/api/libloaderapi/nf-libloaderapi-getprocaddress">GetProcAddress</a> by iterating through its exported functions.
+Using these two functions, the shellcode loads user32.dll and gets the address of <a href="https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-messageboxa">MessageBoxA</a>.
+This function is than used to displays the message &ldquo;This MessageBox was created using a windows shellcode.&rdquo;.</p>
+
+<p>The linux shellcode on the other hand uses the sys_write syscall to write the string &ldquo;This line was printed using as linux shellcode&rdquo; to stderr (fd 2).</p>
+
+<p>Two completely different shellcode designs, assuming completely different operating systems, both working inside the same process.
+Welcome to WINE exploitation!</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Windows executables running inside WINE look like a great playing field for CTFs.</p>
+
+<p>Both Linux and Windows shellcodes can be used
+(normally i see no reason why someone would use the drastically larger and more complex windows shellcodes, but someone might want to build a challenge around that).</p>
+
+<p>There is working data execution prevention (DEP), but address space layout randomisation (ASLR) is not active for many modules loaded by default into every process.
+That should be enough to circumvent both ASLR and DEP even within the limited time of a CTF.</p>
+
+<p>This allows for exploitation challenges that remain solvable for intermediate players without somehow weakening the protections enables by default on modern operating systems.</p>
+
+<p>I will have a look at the exploit development process against a simple target in the next part of this <a href="https://schlafwandler.github.io/series/attacking-wine/">series</a>.</p>
+
+<p>And if you are, for any reason, employing WINE in an production environment (maybe even with legacy software?), <strong>now</strong> might be a good moment to start worrying.</p>
+<ul class="pa0">
+  
+   <li class="list">
+     <a href="/tags/wine" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">WINE</a>
+   </li>
+  
+</ul>
+<div class="mt6">
+        
+      </div>
+    </section>
+
+    <aside class="w-30-l mt6-l"><div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">What&#39;s in this posts</p>
+      <nav id="TableOfContents">
+<ul>
+<li>
+<ul>
+<li><a href="#examining-the-wine-environment">Examining the WINE environment</a>
+<ul>
+<li><a href="#intro">Intro</a></li>
+<li><a href="#motivation">Motivation</a>
+<ul>
+<li><a href="#software-versions-used">Software versions used</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#what-is-wine">What is WINE</a></li>
+<li><a href="#a-process-in-wine">A process in WINE</a></li>
+<li><a href="#examining-the-process">Examining the process</a></li>
+<li><a href="#wine-s-dll-so-files">Wine&rsquo;s .dll.so files</a>
+<ul>
+<li><a href="#wine-libraries-on-disk">Wine libraries on disk</a></li>
+<li><a href="#wine-libraries-in-memory">Wine libraries in memory</a></li>
+</ul></li>
+<li><a href="#executing-shellcode">Executing shellcode</a></li>
+<li><a href="#conclusion">Conclusion</a></li>
+</ul></li>
+</ul>
+</nav>
+  </div>
+
+
+
+
+</aside>
+
+  </article>
+
+    </main>
+    <footer class="bg-navy bottom-0 w-100 pa3" role="contentinfo">
+  <div class="flex justify-between">
+  <a class="f4 fw4 hover-white no-underline white-70 dn dib-ns pv2 ph3" href="https://schlafwandler.github.io" >
+    &copy; 2019 Pointers to the void
+  </a>
+    <div>
+
+
+
+
+
+
+
+
+
+
+</div>
+  </div>
+</footer>
+
+    
+
+  <script src="/dist/js/app.3fc0f988d21662902933.js"></script>
+
+
+  </body>
+</html>
