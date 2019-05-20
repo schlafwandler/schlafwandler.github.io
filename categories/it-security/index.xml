@@ -6,10 +6,19 @@
     <description>Recent content in It Security on Pointers to the void</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 09 May 2019 00:00:21 +0200</lastBuildDate>
+    <lastBuildDate>Mon, 20 May 2019 15:56:30 +0200</lastBuildDate>
     
 	<atom:link href="https://schlafwandler.github.io/categories/it-security/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Attacking applications running under WINE (Part II)</title>
+      <link>https://schlafwandler.github.io/posts/attacking-wine-part-ii/</link>
+      <pubDate>Mon, 20 May 2019 15:56:30 +0200</pubDate>
+      
+      <guid>https://schlafwandler.github.io/posts/attacking-wine-part-ii/</guid>
+      <description>Simple exploits against targets under WINE In this part of the series, I will demonstrate some simple exploits against Windows executables running under WINE. I will assume basic knowledge on exploiting stack overflows on the x86 architecture. Additionally, some knowledge of return-oriented-programming (ROP) or return-to-libc exploitation techniques is beneficial. Out of convenience I&amp;rsquo;m using pwntools for the development of the exploits, but every other toolkit will work as well. Also, I&amp;rsquo;m showing some rather simple task in some detail to demonstrate the use of Linux tools against windows binaries.</description>
+    </item>
     
     <item>
       <title>Attacking applications running under WINE (Part I)</title>
