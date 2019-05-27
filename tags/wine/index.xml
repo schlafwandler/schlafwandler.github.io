@@ -6,10 +6,19 @@
     <description>Recent content in Wine on Pointers to the void</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 20 May 2019 15:56:30 +0200</lastBuildDate>
+    <lastBuildDate>Mon, 27 May 2019 22:11:44 +0200</lastBuildDate>
     
 	<atom:link href="https://schlafwandler.github.io/tags/wine/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Attacking applications running under WINE (Part III)</title>
+      <link>https://schlafwandler.github.io/posts/attacking-wine-part-iii/</link>
+      <pubDate>Mon, 27 May 2019 22:11:44 +0200</pubDate>
+      
+      <guid>https://schlafwandler.github.io/posts/attacking-wine-part-iii/</guid>
+      <description>VIRTUAL_SetForceExec - WINE&amp;rsquo;s magic gadget In the last part of the series I demonstated a way to make the stack executable by returning to VirtualProtect. This is a nice and easy way to achieve arbitrary code execution - as long as you target a 32 bit programm. When targeting 64 bit programs there is a nasty obstacle to this trick: The x64 calling convention ships the first 4 parameters in the registers RCX, RDX, R8, and R9.</description>
+    </item>
     
     <item>
       <title>Attacking applications running under WINE (Part II)</title>

