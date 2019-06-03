@@ -12,12 +12,12 @@
     <meta name="generator" content="Hugo 0.47.1" />
     
     
-      <META NAME="ROBOTS" CONTENT="NOINDEX, NOFOLLOW">
+      <META NAME="ROBOTS" CONTENT="INDEX, FOLLOW">
     
 
     
     
-      <link href="/dist/css/app.d98f2eb6bcd1eaedb7edf166bd16af26.css" rel="stylesheet">
+      <link href="https://schlafwandler.github.io/dist/css/app.d98f2eb6bcd1eaedb7edf166bd16af26.css" rel="stylesheet">
     
 
     
@@ -26,16 +26,19 @@
       
     
 
+    <meta content="WINE, security, exploitation, exploit, security, IT security, ASLR, DEP, shellcode, return-to-libc, ROP, VIRTUAL_SetForceExec, SetForceExec" name="keywords">
+    <meta content=" - A generic way to defeat data execution prevention (DEP) in WINE" property="og:description">
+
     
 
     <meta property="og:title" content="Attacking applications running under WINE (Part III)" />
-<meta property="og:description" content="VIRTUAL_SetForceExec - WINE&rsquo;s magic gadget In the last part of the series I demonstated a way to make the stack executable by returning to VirtualProtect. This is a nice and easy way to achieve arbitrary code execution - as long as you target a 32 bit programm. When targeting 64 bit programs there is a nasty obstacle to this trick: The x64 calling convention ships the first 4 parameters in the registers RCX, RDX, R8, and R9." />
+<meta property="og:description" content="A generic way to defeat data execution prevention (DEP) in WINE" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://schlafwandler.github.io/posts/attacking-wine-part-iii/" /><meta property="article:published_time" content="2019-05-27T22:11:44&#43;02:00"/>
 <meta property="article:modified_time" content="2019-05-27T22:11:44&#43;02:00"/>
 
 <meta itemprop="name" content="Attacking applications running under WINE (Part III)">
-<meta itemprop="description" content="VIRTUAL_SetForceExec - WINE&rsquo;s magic gadget In the last part of the series I demonstated a way to make the stack executable by returning to VirtualProtect. This is a nice and easy way to achieve arbitrary code execution - as long as you target a 32 bit programm. When targeting 64 bit programs there is a nasty obstacle to this trick: The x64 calling convention ships the first 4 parameters in the registers RCX, RDX, R8, and R9.">
+<meta itemprop="description" content="A generic way to defeat data execution prevention (DEP) in WINE">
 
 
 <meta itemprop="datePublished" content="2019-05-27T22:11:44&#43;02:00" />
@@ -47,8 +50,10 @@
 <meta itemprop="keywords" content="WINE," />
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Attacking applications running under WINE (Part III)"/>
-<meta name="twitter:description" content="VIRTUAL_SetForceExec - WINE&rsquo;s magic gadget In the last part of the series I demonstated a way to make the stack executable by returning to VirtualProtect. This is a nice and easy way to achieve arbitrary code execution - as long as you target a 32 bit programm. When targeting 64 bit programs there is a nasty obstacle to this trick: The x64 calling convention ships the first 4 parameters in the registers RCX, RDX, R8, and R9."/>
+<meta name="twitter:description" content="A generic way to defeat data execution prevention (DEP) in WINE"/>
 
+      
+    
   </head>
 
   <body class="ma0 avenir bg-near-white">
@@ -71,7 +76,7 @@
         <ul class="pl0 mr3">
           
           <li class="list f5 f4-ns fw4 dib pr3">
-            <a class="hover-white no-underline white-90" href="/tags/" title=" page">
+            <a class="hover-white no-underline white-90" href="https://schlafwandler.github.io/tags/" title=" page">
               
             </a>
           </li>
@@ -629,7 +634,7 @@ And because it&rsquo;s part of ntdll.dll.so, it&rsquo;s loaded into <em>every</e
 <ul class="pa0">
   
    <li class="list">
-     <a href="/tags/wine" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">WINE</a>
+     <a href="https://schlafwandler.github.io/tags/wine" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">WINE</a>
    </li>
   
 </ul>
@@ -682,11 +687,11 @@ And because it&rsquo;s part of ntdll.dll.so, it&rsquo;s loaded into <em>every</e
     <ul class="pa0 list">
 	   
 	     <li  class="mb2">
-          <a href="/posts/attacking-wine-part-ii/">Attacking applications running under WINE (Part II)</a>
+          <a href="https://schlafwandler.github.io/posts/attacking-wine-part-ii/">Attacking applications running under WINE (Part II)</a>
         </li>
 	    
 	     <li  class="mb2">
-          <a href="/posts/attacking-wine-part-i/">Attacking applications running under WINE (Part I)</a>
+          <a href="https://schlafwandler.github.io/posts/attacking-wine-part-i/">Attacking applications running under WINE (Part I)</a>
         </li>
 	    
     </ul>
@@ -719,7 +724,7 @@ And because it&rsquo;s part of ntdll.dll.so, it&rsquo;s loaded into <em>every</e
 
     
 
-  <script src="/dist/js/app.3fc0f988d21662902933.js"></script>
+  <script src="https://schlafwandler.github.io/dist/js/app.3fc0f988d21662902933.js"></script>
 
 
   </body>
