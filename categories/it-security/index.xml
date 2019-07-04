@@ -6,10 +6,20 @@
     <description>Recent content in It Security on Pointers to the void</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 27 May 2019 22:11:44 +0200</lastBuildDate>
+    <lastBuildDate>Thu, 04 Jul 2019 23:27:20 +0200</lastBuildDate>
     
 	<atom:link href="https://schlafwandler.github.io/categories/it-security/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Dumping /proc/kcore in 2019</title>
+      <link>https://schlafwandler.github.io/posts/dumping-/proc/kcore/</link>
+      <pubDate>Thu, 04 Jul 2019 23:27:20 +0200</pubDate>
+      
+      <guid>https://schlafwandler.github.io/posts/dumping-/proc/kcore/</guid>
+      <description>In this post I will explain how to use /proc/kcore to read the physical memory (RAM) of a Linux system from userland. I&amp;rsquo;m also exploring how and why a previous tool for this task (getkcore from volatility) fails under newer (past 4.8) kernels. In parallel I present a simple demonstrational tool to dump the physical memory of a x86-64 system under more recent Linux version.
+But first, lets have a look at two virtual files on a Linux system: /proc/kcore and /proc/iomem.</description>
+    </item>
     
     <item>
       <title>Attacking applications running under WINE (Part III)</title>

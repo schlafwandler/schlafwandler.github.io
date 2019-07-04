@@ -3,6 +3,11 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
+    <loc>https://schlafwandler.github.io/posts/dumping-/proc/kcore/</loc>
+    <lastmod>2019-07-04T23:27:20+02:00</lastmod>
+  </url>
+  
+  <url>
     <loc>https://schlafwandler.github.io/posts/attacking-wine-part-iii/</loc>
     <lastmod>2019-05-27T22:11:44+02:00</lastmod>
   </url>
@@ -22,6 +27,12 @@
   </url>
   
   <url>
+    <loc>https://schlafwandler.github.io/tags/proc/kcore/</loc>
+    <lastmod>2019-07-04T23:27:20+02:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
     <loc>https://schlafwandler.github.io/series/attacking-wine/</loc>
     <lastmod>2019-05-27T22:11:44+02:00</lastmod>
   </url>
@@ -32,20 +43,26 @@
   </url>
   
   <url>
+    <loc>https://schlafwandler.github.io/tags/forensics/</loc>
+    <lastmod>2019-07-04T23:27:20+02:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
     <loc>https://schlafwandler.github.io/categories/it-security/</loc>
-    <lastmod>2019-05-27T22:11:44+02:00</lastmod>
+    <lastmod>2019-07-04T23:27:20+02:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>https://schlafwandler.github.io/</loc>
-    <lastmod>2019-05-27T22:11:44+02:00</lastmod>
+    <lastmod>2019-07-04T23:27:20+02:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>https://schlafwandler.github.io/posts/</loc>
-    <lastmod>2019-05-27T22:11:44+02:00</lastmod>
+    <lastmod>2019-07-04T23:27:20+02:00</lastmod>
     <priority>0</priority>
   </url>
   

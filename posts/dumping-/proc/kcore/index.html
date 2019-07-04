@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    
+    <title>Pointers to the void  | Dumping /proc/kcore in 2019</title>
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+
+    <meta name="viewport" content="width=device-width,minimum-scale=1">
+    <meta name="generator" content="Hugo 0.47.1" />
+    
+    
+      <META NAME="ROBOTS" CONTENT="INDEX, FOLLOW">
+    
+
+    
+    
+      <link href="https://schlafwandler.github.io/dist/css/app.d98f2eb6bcd1eaedb7edf166bd16af26.css" rel="stylesheet">
+    
+
+    
+
+    
+      
+    
+
+    <meta content="/proc/kcore, kcore, memory dump, linux memory dump, linux memory acquisition, physical memory dump" name="keywords">
+    <meta content=" - " property="og:description">
+
+    
+
+    <meta property="og:title" content="Dumping /proc/kcore in 2019" />
+<meta property="og:description" content="In this post I will explain how to use /proc/kcore to read the physical memory (RAM) of a Linux system from userland. I&rsquo;m also exploring how and why a previous tool for this task (getkcore from volatility) fails under newer (past 4.8) kernels. In parallel I present a simple demonstrational tool to dump the physical memory of a x86-64 system under more recent Linux version.
+But first, lets have a look at two virtual files on a Linux system: /proc/kcore and /proc/iomem." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://schlafwandler.github.io/posts/dumping-/proc/kcore/" /><meta property="article:published_time" content="2019-07-04T23:27:20&#43;02:00"/>
+<meta property="article:modified_time" content="2019-07-04T23:27:20&#43;02:00"/>
+<meta itemprop="name" content="Dumping /proc/kcore in 2019">
+<meta itemprop="description" content="In this post I will explain how to use /proc/kcore to read the physical memory (RAM) of a Linux system from userland. I&rsquo;m also exploring how and why a previous tool for this task (getkcore from volatility) fails under newer (past 4.8) kernels. In parallel I present a simple demonstrational tool to dump the physical memory of a x86-64 system under more recent Linux version.
+But first, lets have a look at two virtual files on a Linux system: /proc/kcore and /proc/iomem.">
+
+
+<meta itemprop="datePublished" content="2019-07-04T23:27:20&#43;02:00" />
+<meta itemprop="dateModified" content="2019-07-04T23:27:20&#43;02:00" />
+<meta itemprop="wordCount" content="1813">
+
+
+
+<meta itemprop="keywords" content="/proc/kcore,forensics," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Dumping /proc/kcore in 2019"/>
+<meta name="twitter:description" content="In this post I will explain how to use /proc/kcore to read the physical memory (RAM) of a Linux system from userland. I&rsquo;m also exploring how and why a previous tool for this task (getkcore from volatility) fails under newer (past 4.8) kernels. In parallel I present a simple demonstrational tool to dump the physical memory of a x86-64 system under more recent Linux version.
+But first, lets have a look at two virtual files on a Linux system: /proc/kcore and /proc/iomem."/>
+
+      
+    
+  </head>
+
+  <body class="ma0 avenir bg-near-white">
+
+    
+   
+  
+
+  <header>
+    <div class="bg-navy">
+      <nav class="pv3 ph3 ph4-ns" role="navigation">
+  <div class="flex-l justify-between items-center center">
+    <a href="https://schlafwandler.github.io" class="f3 fw2 hover-white no-underline white-90 dib">
+      Pointers to the void
+    </a>
+    <div class="flex-l items-center">
+      
+
+      
+        <ul class="pl0 mr3">
+          
+          <li class="list f5 f4-ns fw4 dib pr3">
+            <a class="hover-white no-underline white-90" href="https://schlafwandler.github.io/tags/" title=" page">
+              
+            </a>
+          </li>
+          
+        </ul>
+      
+      
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+  </div>
+</nav>
+
+    </div>
+  </header>
+
+
+
+    <main class="pb7" role="main">
+      
+  
+  <article class="flex-l flex-wrap justify-between mw8 center ph3">
+
+    <header class="mt4 w-100">
+      <p class="f6 b helvetica tracked">
+          
+        POSTS
+      </p>
+      <h1 class="f1 athelas mb1">Dumping /proc/kcore in 2019</h1>
+      
+      <time class="f6 mv4 dib tracked" datetime="2019-07-04T23:27:20&#43;02:00">July 4, 2019</time>      
+      
+      
+    </header>
+
+    <section class="nested-copy-line-height lh-copy serif f4 nested-links nested-img mid-gray pr4-l w-two-thirds-l">
+
+<p>In this post I will explain how to use /proc/kcore to read the physical memory (RAM) of a Linux system from userland.
+I&rsquo;m also exploring how and why a previous tool for this task (getkcore from volatility) fails under newer (past 4.8) kernels.
+In parallel I present a simple demonstrational tool to dump the physical memory of a x86-64 system under more recent Linux version.</p>
+
+<p>But first, lets have a look at two virtual files on a Linux system: /proc/kcore and /proc/iomem.</p>
+
+<h2 id="proc-kcore">/proc/kcore</h2>
+
+<p>/proc/kcore is a file in the virtual /proc filesystem of a Linux machine.
+It is created by the kernel in <a href="https://elixir.bootlin.com/linux/v5.0/source/fs/proc/kcore.c">fs/proc/kcore.c</a> and allows read access to all the kernels virtual memory space from userland.</p>
+
+<p>When you look at it, the first thing you will notice is its seemingly gigantic size (as displayed by <code>ls -l</code>), often reaching into the hundreds of terabytes (and much larger than all installed memory devices combined).
+In fact it&rsquo;s not occupying any disk space at all:
+as with all other files in /proc, its content is generated on the fly by the kernel whenever the file is read.
+And it can only be read (writing is neither allowed nor implemented in the kernel), and only with root privileges.</p>
+
+<p>Internally it has the format of an ELF core dump file (ELF Type 4/ET_CORE).
+That means that it has the same format as a core file from a crashed process;
+but instead of capturing the (static) state of a single process at the moment of the crash, it provides a real time view into the state of the whole system.</p>
+
+<p>A few words about ELF: the Executable and Linking Format is the file format for executable, shared objects (libraries) and core dumps on Unix-like operating systems.
+It inner workings are quite complex (and actually <a href="https://www.cs.dartmouth.edu/~sergey/wm/woot13-shapiro.pdf">turing complete</a>), but only two of its many structures are of interest here:</p>
+
+<ul>
+<li>The ELF header (Elf64_Ehdr): It&rsquo;s at the start of every ELF file.
+We need two pieces of information from it: the location and number of entries of the program header table.</li>
+<li>The Program segment headers (Elf64_Phdr): An ELF file contains an array of programm header structures.
+There are various subtypes of program headers, but we care only about the ones marked as PT_LOAD.
+Each of these headers describe a loadable segment - a part of the file that is loaded into memory.
+In /proc/kcore, they describe where in the file each portion of the system memory can be found.</li>
+</ul>
+
+<p>More information about ELF can be found <a href="https://refspecs.linuxfoundation.org/elf/elf.pdf">here</a> or in the elf manpage.</p>
+
+<p>Every read access to the /proc/kcore virtual file is handled by the function <a href="https://elixir.bootlin.com/linux/v5.0/source/fs/proc/kcore.c#L291">read_kcore</a> in the Linux kernel.
+If the read access includes the ELF header, program headers or ELF notes, they are generated on the fly and returned to the user.
+Otherwise, the function matches the file offset to be read to a virtual memory address and copies the content over.</p>
+
+<p>On x86-64 systems, Linux maintains a complete one-to-one map of all physical memory in the kernels virtual address space (kernel identity mapping/paging, see <a href="https://bneuburg.github.io/volatility/kaslr/2017/04/26/KASLR1.html">here</a> or <a href="https://elixir.bootlin.com/linux/latest/source/Documentation/x86/x86_64/mm.txt">here</a>).
+So by reading the right ranges of kernel virtual memory, one can get a complete copy of the content of the physical memory of that system.</p>
+
+<h2 id="proc-iomem">/proc/iomem</h2>
+
+<p>The physical RAM of a system is not necessarily at the beginning of the physical address space, nor is it always in one continuous block.
+To determine which parts of the address space are actual memory (as opposed to memory mapped I/O), we turn to /proc/iomem.</p>
+
+<p>/proc/iomem is an other virtual file, created in <a href="https://elixir.bootlin.com/linux/v5.0/source/kernel/resource.c#L142">kernel/resource.c</a>.
+It lists the various I/O memory regions that are mapped into the physical address space, including the RAM (see <a href="https://lwn.net/Articles/102232/">here</a>).</p>
+
+<p>Finding the RAM is quite easy:
+All RAM ranges are named &lsquo;System RAM&rsquo; in /proc/iomem&rsquo;s output, which also gives us the (physical) addresses of the first and last byte of the range.</p>
+
+<h2 id="getkcore">getkcore</h2>
+
+<p><a href="https://github.com/volatilityfoundation/volatility/tree/master/tools/linux/kcore">Getkcore</a> is a tool for dumping /proc/kcore that comes with volatility.
+The problem with it is simple: it&rsquo;s not working with newer Linux kernels.
+On a system with a kernel version greater or equal 4.8, it just creates the output file, but does not write any data to it (and produces no error messages).</p>
+
+<p>So: what goes wrong?</p>
+
+<h2 id="pre-kernel-4-8">Pre kernel 4.8</h2>
+
+<p>Before kernel version 4.8, the kernels virtual mapping of the physical address ranges started at the (constant) virtual address of
+<a href="https://elixir.bootlin.com/linux/latest/source/Documentation/x86/x86_64/mm.txt#L38">0xffff880000000000</a>.
+This meant that for example a (physical) memory page at the physical address 0x100000 always appeared in the kernels virtual address space at the address 0x100000 + 0xffff880000000000 = 0xffff880000100000.
+Translating a physical address to it&rsquo;s counterpart in the kernel identity mapping (and vice versa) was therefor trivial:
+One just needed to add (or subtract) the constant 0xffff880000000000.</p>
+
+<p>Getkcore heavily relied on this.
+It&rsquo;s algorithm was a follows:</p>
+
+<ul>
+<li>Get physical address ranges from /proc/iomem</li>
+<li>Add the static offset 0xffff880000000000 to get the corresponding virtual address in the kernel identity mapping</li>
+<li>Search the program headers of /proc/kcore for a segment with this virtual address</li>
+<li>Dump the segment&rsquo;s content</li>
+</ul>
+
+<p>(Look <a href="https://github.com/volatilityfoundation/volatility/blob/master/tools/linux/kcore/getkcore.c">here</a> for details)</p>
+
+<p>The Problem:
+With KASLR (more precise: the KASLR variant introduced in 4.8), the offset is no longer constantly 0xffff880000000000.
+Instead the offset is (somewhat) randomised
+(You can find a more detailed explanation and visualisation <a href="https://bneuburg.github.io/volatility/kaslr/2017/04/26/KASLR1.html">here</a>).</p>
+
+<p>So when getkcore has the list of RAM ranges from /proc/iomem, it assumes their position in the virtual address space is exactly 0xffff880000000000 bytes above the physical address.
+It then seaches the program headers of /proc/kcore for a segment with a virtual address that matches the physical address of that range plus 0xffff880000000000.
+And when it can not find one (there is none there, because the base address was randomized), it fails silently.</p>
+
+<p>(Just to note, it&rsquo;s not my intention to bash getkcore or the volatility project, from which I learned a lot.
+I just want to describe my journey from &ldquo;Hey, that&rsquo;s cool, I wonder how it works!&rdquo; over &ldquo;Why isn&rsquo;t this working?&rdquo; to &ldquo;How could I make it work again?&rdquo;)</p>
+
+<h2 id="post-kernel-4-8">Post kernel 4.8</h2>
+
+<p>So, with a kernel greater or equal 4.8 there is a random component in the start address of the kernel identity mapping.
+This means we can no longer expect to find it at a constant known address in the kernels virtual memory space.
+Also, the simple offset adding technique to match the physical system RAM addresses from /proc/iomem to the right segment&rsquo;s virtual address does not work anymore.</p>
+
+<p>But, luckily for us, /proc/kcore is nice and gives us an other way to do this!</p>
+
+<p>The ELF program header contains a field p_paddr.
+The ELF man page states that this field contains the segment&rsquo;s physical address on systems &lsquo;for which physical  addressing  is  relevant&rsquo;.
+On x86 (both 32-bit and 64-bit), this is generally not the case and all executables and libraries I encountered so far had this field set to 0.
+But in /proc/kcore, it is used exactly as the name predicts: It contains the physical address for this segment.</p>
+
+<p>And as the physical memory addesses of the System RAM is still available via /dev/iomem, we can now again trivially match each physical RAM range to the corresponding segment in /proc/kcore.</p>
+
+<p>So the new approach goes like this:</p>
+
+<ul>
+<li>get physical address ranges from /proc/iomem</li>
+<li>find a segment in /proc/kcore that has this physical address</li>
+<li>dump segment content</li>
+</ul>
+
+<h2 id="the-code">The code</h2>
+
+<p>I wrote a small program to do this:</p>
+
+<p>First, we need to find out at which physical addresses there is actually system RAM (and not some form of memory mapped I/O).
+We do this by parsing /proc/iomem, looking for lines containing &ldquo;System RAM&rdquo;.
+For each of these lines, we note the start and end addresses in a structure.</p>
+
+<pre><code class="language-C">int get_system_ram_addrs(struct addr_range *addrs)
+{
+    FILE *fd;
+    char *lineptr = malloc(512);
+    size_t n = 512;
+    int count = 0;
+
+    if((fd = fopen(IOMEM_FILENAME,&quot;r&quot;)) == NULL)
+    {
+        fprintf(stderr,&quot;Could not open %s\n&quot;,IOMEM_FILENAME);
+        exit(-1);
+    }
+
+    int index = 0;
+    while(getline(&amp;lineptr,&amp;n,fd) != -1)
+    {
+        if(strstr(lineptr,&quot;System RAM&quot;))
+        {
+            uint64_t start;
+            uint64_t end;
+
+            sscanf(lineptr,&quot;%lx-%lx&quot;,&amp;start,&amp;end);
+
+            addrs[count].index = index;
+            addrs[count].start = start;
+            addrs[count].end = end;
+
+            if (++count &gt;= MAX_PHYS_RANGES) {
+                fprintf(stderr,&quot;Too many physical ranges\n&quot;);
+                exit(-1);
+            }
+        }
+
+        if (lineptr[0] != ' ')
+            index++;
+    }
+
+    fclose(fd);
+    free(lineptr);
+
+    return count;
+}
+</code></pre>
+
+<p>Next, we need to identify the segments in /proc/kcore that match the found physical ranges.
+That&rsquo;s done by comparing the start address from /proc/iomem to the p_addr member of each Elf64_Phdr (Program header) structure in /proc/kcore.
+We save the physical address, the offset in the kcore-file and the segment size.</p>
+
+<pre><code class="language-C">int match_phdrs(    Elf64_Phdr *prog_hdr,
+                    unsigned int num_hdrs,
+                    struct addr_range *ranges,
+                    unsigned int num_phys_ranges,
+                    struct section *sections)
+{
+    int sections_filled_in = 0;
+
+    for (int i=0;i&lt;num_hdrs;i++)
+    {
+        for (int j=0;j&lt;num_phys_ranges;j++)
+        {
+            if (prog_hdr[i].p_paddr == ranges[j].start)
+            {
+                sections[sections_filled_in].phys_base = ranges[j].start;
+                sections[sections_filled_in].file_offset = prog_hdr[i].p_offset;
+                sections[sections_filled_in].size = prog_hdr[i].p_memsz;
+
+                sections_filled_in++;
+            }
+        }
+    }
+
+    return sections_filled_in;
+}
+</code></pre>
+
+<p>After that, the dumping of the physical memory can begin.
+For the dump I chose the <a href="https://github.com/504ensicsLabs/LiME/blob/master/doc/README.md#lime-memory-range-header-version-1-specification-">LiME file format</a>.
+In a LiME file, there is a header (containing size and original physical address) for each memory range, followed by its data.
+The header for the next range follows directly after that.</p>
+
+<p>In this function we create the header and write it to the file.
+Than we copy the memory content from the right offset in /proc/kcore to the dump file.
+We do this for every memory range we found.</p>
+
+<pre><code class="language-C">int write_lime(int kcore_fd,int out_fd,struct section *sections,int num_ranges)
+{
+    lime_mem_range_header lime_header;
+    lime_header.magic = 0x4C694D45;
+    lime_header.version = 1;
+    memset(&amp;lime_header.reserved,0x00,8);
+
+    for (int i=0;i&lt;num_ranges;i++)
+    {
+        lime_header.s_addr = sections[i].phys_base;
+        lime_header.e_addr = sections[i].phys_base + sections[i].size -1;
+
+        // write lime_mem_range_header
+        write(out_fd,&amp;lime_header,sizeof(lime_mem_range_header));
+
+        printf(&quot;Copying section %d (0x%llx - 0x%llx)\n&quot;,i,lime_header.s_addr,lime_header.e_addr);
+
+        // copy content over
+        off64_t pos = lseek64(kcore_fd, sections[i].file_offset, SEEK_SET);
+        copy_loop(out_fd,kcore_fd,sections[i].size);
+    }
+}
+</code></pre>
+
+<p>And that&rsquo;s basically all the code needed to dump the physical memory to disk.</p>
+
+<p>I skipped over the main function, because it just ties the other functions together.
+And there is one other function, copy_loop, which simply does exactly this:
+copy data from one file descriptor to an other file descriptor in a loop.
+Using sendfile or copy_file_range would have been more efficient, but both gave me some strange errors when I used them on /proc/kcore,
+so I chose to do it on my own.</p>
+
+<p>But apart from this, that&rsquo;s basically it.</p>
+
+<h2 id="the-tool">The tool</h2>
+
+<p>You can find the complete program <a href="https://github.com/schlafwandler/kcore_dump">here</a>.</p>
+
+<p>I&rsquo;m releasing this program here as a simple Proof-of-Concept tool.
+It&rsquo;s intended to demonstrate how physical RAM can be dumped via /proc/kcore.
+It has undergone only minimal testing (as in: works on my machine) and should not be considered a ready-to-use forensics tool.</p>
+
+<p>Let me repeat this:</p>
+
+<p>THIS TOOL HAS NOT UNDERGONE MUCH TESTING! USE IT AT YOUR OWN RISK!</p>
+
+<p>If you try to use this tool in a real forensics case it might ruin your evidence, set your screen on fire and eat your cat.
+Or it might not.
+You have been warned.</p>
+
+<p>For memory acquisition in a read-world scenario you should check out <a href="https://github.com/google/rekall/tree/master/tools/pmem">pmem</a>, which uses a <a href="https://github.com/google/rekall/blob/master/tools/pmem/linux_pmem.cc#L115">similar approach</a>, or <a href="https://github.com/504ensicsLabs/LiME">LiME</a>.</p>
+<ul class="pa0">
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags//proc/kcore" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">/proc/kcore</a>
+   </li>
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/forensics" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">forensics</a>
+   </li>
+  
+</ul>
+<div class="mt6">
+        
+      </div>
+    </section>
+
+    <aside class="w-30-l mt6-l"><div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">What&#39;s in this posts</p>
+      <nav id="TableOfContents">
+<ul>
+<li>
+<ul>
+<li><a href="#proc-kcore">/proc/kcore</a></li>
+<li><a href="#proc-iomem">/proc/iomem</a></li>
+<li><a href="#getkcore">getkcore</a></li>
+<li><a href="#pre-kernel-4-8">Pre kernel 4.8</a></li>
+<li><a href="#post-kernel-4-8">Post kernel 4.8</a></li>
+<li><a href="#the-code">The code</a></li>
+<li><a href="#the-tool">The tool</a></li>
+</ul></li>
+</ul>
+</nav>
+  </div>
+
+
+
+
+</aside>
+
+  </article>
+
+    </main>
+    <footer class="bg-navy bottom-0 w-100 pa3" role="contentinfo">
+  <div class="flex justify-between">
+  <a class="f4 fw4 hover-white no-underline white-70 dn dib-ns pv2 ph3" href="https://schlafwandler.github.io" >
+    &copy; 2019 Pointers to the void
+  </a>
+    <div>
+
+
+
+
+
+
+
+
+
+
+</div>
+  </div>
+</footer>
+
+    
+
+  <script src="https://schlafwandler.github.io/dist/js/app.3fc0f988d21662902933.js"></script>
+
+
+  </body>
+</html>
