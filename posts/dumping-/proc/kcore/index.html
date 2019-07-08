@@ -44,7 +44,7 @@ But first, lets have a look at two virtual files on a Linux system: /proc/kcore 
 
 <meta itemprop="datePublished" content="2019-07-04T23:27:20&#43;02:00" />
 <meta itemprop="dateModified" content="2019-07-04T23:27:20&#43;02:00" />
-<meta itemprop="wordCount" content="1813">
+<meta itemprop="wordCount" content="1798">
 
 
 
@@ -227,7 +227,7 @@ Also, the simple offset adding technique to match the physical system RAM addres
 
 <p>The ELF program header contains a field p_paddr.
 The ELF man page states that this field contains the segment&rsquo;s physical address on systems &lsquo;for which physical  addressing  is  relevant&rsquo;.
-On x86 (both 32-bit and 64-bit), this is generally not the case and all executables and libraries I encountered so far had this field set to 0.
+On x86 (both 32-bit and 64-bit), this is generally not the case.
 But in /proc/kcore, it is used exactly as the name predicts: It contains the physical address for this segment.</p>
 
 <p>And as the physical memory addesses of the System RAM is still available via /dev/iomem, we can now again trivially match each physical RAM range to the corresponding segment in /proc/kcore.</p>
