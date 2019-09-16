@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Ctf on Pointers to the void</title>
+    <link>https://schlafwandler.github.io/tags/ctf/</link>
+    <description>Recent content in Ctf on Pointers to the void</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 16 Sep 2019 17:27:35 +0200</lastBuildDate>
+    
+	<atom:link href="https://schlafwandler.github.io/tags/ctf/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>MRMCDCTF2019: Sitting duck</title>
+      <link>https://schlafwandler.github.io/posts/mrmcdctf2019-sitting_duck/</link>
+      <pubDate>Mon, 16 Sep 2019 17:27:35 +0200</pubDate>
+      
+      <guid>https://schlafwandler.github.io/posts/mrmcdctf2019-sitting_duck/</guid>
+      <description>Solution to Sitting duck (very easy) from MRMCDCTF 2019 Sitting duck was by far the easiest challenge I have written for the MRMCD 2019 CTF. It was targeted mostly at total CTF newbies that had absolutely no previous experience with reversing challenges.
+The challenge gives you a binary file and the hint that it is solvable with very little experience.
+When executing the file, it asks us for the flag.</description>
+    </item>
+    
+  </channel>
+</rss>
