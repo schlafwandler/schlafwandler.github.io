@@ -20,5 +20,14 @@
       <description>Some exploration on the exploitation of applications running under WINE</description>
     </item>
     
+    <item>
+      <title>Mrmcdctf2019 Solutions</title>
+      <link>https://schlafwandler.github.io/series/mrmcdctf2019-solutions/</link>
+      <pubDate>Mon, 16 Sep 2019 17:27:35 +0200</pubDate>
+      
+      <guid>https://schlafwandler.github.io/series/mrmcdctf2019-solutions/</guid>
+      <description></description>
+    </item>
+    
   </channel>
 </rss>
