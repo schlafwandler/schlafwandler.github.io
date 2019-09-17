@@ -6,10 +6,20 @@
     <description>Recent content in Ctf on Pointers to the void</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 16 Sep 2019 17:27:35 +0200</lastBuildDate>
+    <lastBuildDate>Tue, 17 Sep 2019 18:55:24 +0200</lastBuildDate>
     
 	<atom:link href="https://schlafwandler.github.io/tags/ctf/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>MRMCDCTF2019: Cereal</title>
+      <link>https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/</link>
+      <pubDate>Tue, 17 Sep 2019 18:55:24 +0200</pubDate>
+      
+      <guid>https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/</guid>
+      <description>Solution to Cereal (easy) from MRMCDCTF 2019 Cereal is an other reversing challenge I have written for this years MRMCD CTF. But unlike Sitting duck, this challenge actually involves reversing!
+At first look the binary is similar to Sitting duck: It&amp;rsquo;s a 64 bit ELF executable, and it asks us for the password/flag when started. But simply trying strings will bring up nothing useful, so we have to actually analyse what the program does internally to find the flag.</description>
+    </item>
     
     <item>
       <title>MRMCDCTF2019: Sitting duck</title>
