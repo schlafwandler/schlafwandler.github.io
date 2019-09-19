@@ -3,6 +3,11 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
+    <loc>https://schlafwandler.github.io/posts/mrmcdctf2019-slicer/</loc>
+    <lastmod>2019-09-19T17:01:00+02:00</lastmod>
+  </url>
+  
+  <url>
     <loc>https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/</loc>
     <lastmod>2019-09-17T18:55:24+02:00</lastmod>
   </url>
@@ -54,13 +59,13 @@
   
   <url>
     <loc>https://schlafwandler.github.io/tags/ctf/</loc>
-    <lastmod>2019-09-17T18:55:24+02:00</lastmod>
+    <lastmod>2019-09-19T17:01:00+02:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>https://schlafwandler.github.io/categories/ctf/</loc>
-    <lastmod>2019-09-17T18:55:24+02:00</lastmod>
+    <lastmod>2019-09-19T17:01:00+02:00</lastmod>
     <priority>0</priority>
   </url>
   
@@ -72,31 +77,31 @@
   
   <url>
     <loc>https://schlafwandler.github.io/categories/it-security/</loc>
-    <lastmod>2019-09-17T18:55:24+02:00</lastmod>
+    <lastmod>2019-09-19T17:01:00+02:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>https://schlafwandler.github.io/tags/mrmcdctf2019/</loc>
-    <lastmod>2019-09-17T18:55:24+02:00</lastmod>
+    <lastmod>2019-09-19T17:01:00+02:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>https://schlafwandler.github.io/series/mrmcdctf2019-solutions/</loc>
-    <lastmod>2019-09-17T18:55:24+02:00</lastmod>
+    <lastmod>2019-09-19T17:01:00+02:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>https://schlafwandler.github.io/</loc>
-    <lastmod>2019-09-17T18:55:24+02:00</lastmod>
+    <lastmod>2019-09-19T17:01:00+02:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>https://schlafwandler.github.io/posts/</loc>
-    <lastmod>2019-09-17T18:55:24+02:00</lastmod>
+    <lastmod>2019-09-19T17:01:00+02:00</lastmod>
     <priority>0</priority>
   </url>
   

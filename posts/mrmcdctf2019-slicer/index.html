@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    
+    <title>Pointers to the void  | MRMCDCTF2019: Slicer</title>
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+
+    <meta name="viewport" content="width=device-width,minimum-scale=1">
+    <meta name="generator" content="Hugo 0.52" />
+    
+    
+      <META NAME="ROBOTS" CONTENT="INDEX, FOLLOW">
+    
+
+    
+    
+      <link href="https://schlafwandler.github.io/dist/css/app.d98f2eb6bcd1eaedb7edf166bd16af26.css" rel="stylesheet">
+    
+
+    
+
+    
+      
+    
+
+    <meta content="CTF, capture the flag, strings, linux, binary" name="keywords">
+    <meta content=" - " property="og:description">
+
+    
+
+    <meta property="og:title" content="MRMCDCTF2019: Slicer" />
+<meta property="og:description" content="Solution to Slicer (easy) from MRMCDCTF 2019 Slicer is one of the Windows challenges I have written for MRMCDCTF 2019. It&rsquo;s an other easy challenge, but this time the binary is an .exe (PE32) executable.
+The challenge was also tested under wine (4.0), so if you want to try out some of the tricks for debugging wine applications, this would be a good opportunity.
+But for this text, I will stick to Ghidra ." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://schlafwandler.github.io/posts/mrmcdctf2019-slicer/" /><meta property="article:published_time" content="2019-09-19T17:01:00&#43;02:00"/>
+<meta property="article:modified_time" content="2019-09-19T17:01:00&#43;02:00"/>
+
+
+<meta itemprop="name" content="MRMCDCTF2019: Slicer">
+<meta itemprop="description" content="Solution to Slicer (easy) from MRMCDCTF 2019 Slicer is one of the Windows challenges I have written for MRMCDCTF 2019. It&rsquo;s an other easy challenge, but this time the binary is an .exe (PE32) executable.
+The challenge was also tested under wine (4.0), so if you want to try out some of the tricks for debugging wine applications, this would be a good opportunity.
+But for this text, I will stick to Ghidra .">
+
+
+<meta itemprop="datePublished" content="2019-09-19T17:01:00&#43;02:00" />
+<meta itemprop="dateModified" content="2019-09-19T17:01:00&#43;02:00" />
+<meta itemprop="wordCount" content="1357">
+
+
+
+<meta itemprop="keywords" content="MRMCDCTF2019,CTF," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="MRMCDCTF2019: Slicer"/>
+<meta name="twitter:description" content="Solution to Slicer (easy) from MRMCDCTF 2019 Slicer is one of the Windows challenges I have written for MRMCDCTF 2019. It&rsquo;s an other easy challenge, but this time the binary is an .exe (PE32) executable.
+The challenge was also tested under wine (4.0), so if you want to try out some of the tricks for debugging wine applications, this would be a good opportunity.
+But for this text, I will stick to Ghidra ."/>
+
+      
+    
+  </head>
+
+  <body class="ma0 avenir bg-near-white">
+
+    
+   
+  
+
+  <header>
+    <div class="bg-navy">
+      <nav class="pv3 ph3 ph4-ns" role="navigation">
+  <div class="flex-l justify-between items-center center">
+    <a href="https://schlafwandler.github.io" class="f3 fw2 hover-white no-underline white-90 dib">
+      Pointers to the void
+    </a>
+    <div class="flex-l items-center">
+      
+
+      
+        <ul class="pl0 mr3">
+          
+          <li class="list f5 f4-ns fw4 dib pr3">
+            <a class="hover-white no-underline white-90" href="https://schlafwandler.github.io/tags/" title=" page">
+              
+            </a>
+          </li>
+          
+        </ul>
+      
+      
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+  </div>
+</nav>
+
+    </div>
+  </header>
+
+
+
+    <main class="pb7" role="main">
+      
+  
+  <article class="flex-l flex-wrap justify-between mw8 center ph3">
+
+    <header class="mt4 w-100">
+      <p class="f6 b helvetica tracked">
+          
+        POSTS
+      </p>
+      <h1 class="f1 athelas mb1">MRMCDCTF2019: Slicer</h1>
+      
+      <time class="f6 mv4 dib tracked" datetime="2019-09-19T17:01:00&#43;02:00">September 19, 2019</time>      
+      
+      
+    </header>
+
+    <section class="nested-copy-line-height lh-copy serif f4 nested-links nested-img mid-gray pr4-l w-two-thirds-l">
+
+<h2 id="solution-to-slicer-easy-from-mrmcdctf-2019">Solution to Slicer (easy) from MRMCDCTF 2019</h2>
+
+<p><a href="https://github.com/schlafwandler/CTF-challenges/tree/master/MRMCDCTF-2019/reversing/Slicer">Slicer</a> is one of the Windows challenges I have written for MRMCDCTF 2019.
+It&rsquo;s an other easy challenge, but this time the <a href="https://github.com/schlafwandler/CTF-challenges/raw/master/MRMCDCTF-2019/reversing/Slicer/slicer.exe">binary</a> is an .exe (PE32) executable.</p>
+
+<p>The challenge was also tested under wine (4.0), so if you want to try out some of the <a href="https://schlafwandler.github.io/posts/attacking-wine-part-i/">tricks for debugging wine applications</a>, this would be a good opportunity.</p>
+
+<p>But for this text, I will stick to Ghidra .</p>
+
+<p>When running the executable (in Windows or wine), it will behave just like many other challenges:
+It will display a request for a password in the console, and tell us that we are wrong once we enter the wrong password.</p>
+
+<p>So let&rsquo;s got to work:
+Import the executable and open it in the CodeBrowser (just as we did with <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/">Cereal</a>).</p>
+
+<p>You should notice some differences:
+A Windows Portable Executable (PE) file differs in many ways from the Executable and Linkable (ELF) files used on Linux.
+Many of theses differences are abstracted away by Ghidra, but one is important here:
+PE files do not have a symbol table like ELF files.
+The symbol table contains, among many other things, the names of the functions in the executable.
+Some functions added by the compiler will be named by Ghidra, but for all programmer-created functions (including &lsquo;main&rsquo;) we are on
+out own - Ghidra will assign them names based on their address in memory (like &lsquo;FUN_00401000&rsquo;).</p>
+
+<p>So how do we identify the interesting functions?
+Well, we know some text strings used by the application, like the &ldquo;What is the password?&rdquo; message.
+We can start by looking at the code that references these.</p>
+
+<p>Open the Ghidra&rsquo;s strings view (&lsquo;Defined Strings&rsquo; in the &lsquo;Window&rsquo; menu) and search for the &ldquo;The password is the flag. What is the password?&rdquo; string
+(it&rsquo;s at 00402130).
+When you double click the string, the &lsquo;Listing&rsquo; view (in the middle) will move to the strings location.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-slicer-ghidra-strings.png" alt="Ghidra screenshot with password string" /></p>
+
+<p>The complete line looks like this:</p>
+
+<pre><code>                             s_The_password_is_the_flag._What_i_00402130     XREF[1]:     FUN_00401050:00401068(*)  
+        00402130       ds         &quot;The password is the flag. What is the passwor
+        00402161       ??         00h
+</code></pre>
+
+<p>The &lsquo;XREF&rsquo; entry (at the end) describes an instruction that references (uses) this string in FUN_00401050 at 00401068.
+A double click on the address brings you there.</p>
+
+<p>The complete function FUN_00401050 decompiles to this:</p>
+
+<pre><code>void FUN_00401050(void)
+{
+  FILE *_File;
+  int *piVar1;
+  int *piVar2;
+  uint uVar3;
+  bool bVar4;
+  char *_Format;
+  char *local_c;
+  uint local_8;
+  
+  local_8 = DAT_00403000 ^ (uint)&amp;stack0xfffffffc;
+  printf(&quot;The password is the flag. What is the password?\n&quot;);	[1]
+  memset(&amp;DAT_00403568,0,0x80);
+  _File = __iob_func();
+  fgets(&amp;DAT_00403568,0x80,_File);				[2]
+  strtok_s(&amp;DAT_00403568,&quot;\n&quot;,&amp;local_c);
+  FUN_00401000();						[3]
+  piVar1 = &amp;DAT_00403468;					[4]
+  piVar2 = &amp;DAT_00403018;
+  uVar3 = 0x7c;
+  do {
+    if (*piVar1 != *piVar2) {					[5]
+      _Format = &quot;Wrong. Try again.\n&quot;;				[6]
+      goto LAB_004010df;					[7]
+    }
+    piVar1 = piVar1 + 1;
+    piVar2 = piVar2 + 1;
+    bVar4 = 3 &lt; uVar3;
+    uVar3 = uVar3 - 4;
+  } while (bVar4);
+  _Format = 							[8]
+  &quot;\n##############################################\n###   Congratulations! This is the flag!  ###\n##############################################\n\n&quot;
+  ;
+LAB_004010df:
+  printf(_Format);						[9]
+  printf(&quot;&lt;press any key to continue&gt;\n&quot;);
+  getchar();
+  FUN_00401106();
+  return;
+}
+</code></pre>
+
+<p>What do we see here?
+The &ldquo;What is the password?&rdquo; is displayed ([1]) and the password/flag is read into the buffer DAT_00403568 ([2]).
+This means that DAT_00403568 is the input buffer that stores our password.
+Note the name here: the &lsquo;DAT_&rsquo; reflects that the variable is located in the data segment, not on the stack.
+DAT_00403568 therefore is a global variable, not a local one.</p>
+
+<p>Then the function FUN_00401000 is called ([3]) and two pointers to other global arrays are assigned ([4], note the &lsquo;DAT_&rsquo; names again).
+A loop iterates over them:
+If the entries in both array are different ([5]), the variable &lsquo;_Format&rsquo; is set to the &ldquo;Wrong&rdquo; message ([6]) and the code jumps out of the loop ([7]).
+If the loop runs till the end, &lsquo;_Format&rsquo; is instead set to the &ldquo;Congratulations&rdquo; message ([8]).</p>
+
+<p>At the end, &lsquo;_Format&rsquo; (with either &ldquo;Wrong&rdquo; or &ldquo;Congratulations&rdquo;) is printed to the console ([9]).</p>
+
+<p>What does this mean?
+The process in the loop seems like a comparison between the flag and the input.
+That means that at this point either DAT_00403468 or DAT_00403018 contain the flag, and the other one the input (or some converted version of it).</p>
+
+<p>But which one is which?
+When checking out the content (double click on the variable), DAT_00403468 turns out not to be initialised:</p>
+
+<pre><code>                             DAT_00403464                                    XREF[1]:     00401181(R)  
+        00403464       undefined4 ??
+                             DAT_00403468+1                                  XREF[3,3]:   FUN_00401000:00401031(W), 
+                             DAT_00403468+2                                               FUN_00401050:004010b3(*), 
+                             DAT_00403468+3                                               FUN_00401050:004010c2(R), 
+                             DAT_00403468                                                 FUN_00401000:00401031(W), 
+                                                                                          FUN_00401000:00401038(W), 
+                                                                                          FUN_00401000:00401038(W)  
+        00403468       undefined4 ??
+                             DAT_0040346c                                    XREF[1]:     FUN_00401050:004010c2(R)  
+        0040346c       undefined4 ??
+        00403470       ??         ??
+        00403471       ??         ??
+        00403472       ??         ??
+        00403473       ??         ??
+        00403474       ??         ??
+        00403475       ??         ??
+        00403476       ??         ??
+        00403477       ??         ??
+[...]
+</code></pre>
+
+<p>On the other hand, DAT_00403018 clearly contains some form of data:</p>
+
+<pre><code>                             DAT_00403018                                    XREF[2]:     FUN_00401050:004010b8(*), 
+                                                                                          FUN_00401050:004010c4(R)  
+        00403018       undefined4 0502040Dh
+                             DAT_0040301c                                    XREF[1]:     FUN_00401050:004010c4(R)  
+        0040301c       undefined4 0403040Dh
+        00403020       ??         04h
+        00403021       ??         04h
+        00403022       ??         03h
+        00403023       ??         04h
+        00403024       ??         04h
+        00403025       ??         05h
+        00403026       ??         06h
+        00403027       ??         04h
+        00403028       ??         0Bh
+        00403029       ??         07h
+        0040302a       ??         05h
+        0040302b       ??         06h
+[...]
+</code></pre>
+
+<p>So we can conclude that DAT_00403018 is the saved flag, and DAT_00403468 will contain our input.
+But the values in DAT_00403018 are definitely neither printable ASCII nor unicode.
+And how does our input come from the input buffer at DAT_00403568 to DAT_00403468?</p>
+
+<p>Well, we haven&rsquo;t checked out FUN_00401000 (called at [3]).
+This is what it looks like:</p>
+
+<pre><code>void FUN_00401000(void)
+{
+  byte bVar1;
+  int iVar2;
+  
+  iVar2 = 0xf;
+  do {									[1]				
+    iVar2 = iVar2 + -1;
+  } while (-1 &lt; iVar2);
+
+  iVar2 = 0;								[2]
+  do {
+    bVar1 = (&amp;DAT_00403568)[iVar2];					[3]
+    *(byte *)((int)&amp;DAT_00403468 + iVar2 * 2) = bVar1 &amp; 0xf;		[4]
+    *(byte *)((int)&amp;DAT_00403468 + iVar2 * 2 + 1) = (char)bVar1 &gt;&gt; 4 &amp; 0xf;
+    iVar2 = iVar2 + 1;
+  } while (iVar2 &lt; 0x80);
+  return;
+}
+</code></pre>
+
+<p>The first loop ([1]) doesn&rsquo;t seem to do much: iVar2, the only variable it works with, is later overwritten with a constant ([2]).</p>
+
+<p>The second loop is more interesting:
+It takes every byte of the input ([3]) and then splits them in two:
+The lower 4 bits an the input byte are extracted at [4], the higher 4 bits in the following line.
+Both are copied over to the buffer at DAT_00403468 - the buffer that is later compared to the saved flag.</p>
+
+<p>The process becomes a bit clearer once you assign the variables proper names and types:</p>
+
+<pre><code>void convert_flag(void)
+{
+  int loop_counter;
+  int unused_dummy_variable;
+  byte input_byte;
+  
+  unused_dummy_variable = 0xf;
+  do {
+    unused_dummy_variable = unused_dummy_variable + -1;
+  } while (-1 &lt; unused_dummy_variable);
+  loop_counter = 0;
+  do {
+    input_byte = input_buffer[loop_counter];
+    converted_input[loop_counter * 2] = input_byte &amp; 0xf;
+    converted_input[loop_counter * 2 + 1] = (char)input_byte &gt;&gt; 4 &amp; 0xf;
+    loop_counter = loop_counter + 1;
+  } while (loop_counter &lt; 0x80);
+  return;
+}
+</code></pre>
+
+<p>With this knowledge, we now take a second look at DAT_00403018 (here renamed to encoded_flag):</p>
+
+<pre><code>                             encoded_flag[4]                                 XREF[2,1]:   FUN_00401050:004010b8(*), 
+                             encoded_flag                                                 FUN_00401050:004010c4(R), 
+                                                                                          FUN_00401050:004010c4(R)  
+        00403018       db[256]
+           00403018 [0]             Dh,  4h,  2h,  5h
+           0040301c [4]             Dh,  4h,  3h,  4h
+           00403020 [8]             4h,  4h,  3h,  4h
+           00403024 [12]            4h,  5h,  6h,  4h
+           00403028 [16]            Bh,  7h,  5h,  6h
+           0040302c [20]            6h,  7h,  5h,  6h
+           00403030 [24]            2h,  7h,  9h,  7h
+           00403034 [28]            Fh,  5h,  8h,  6h
+           00403038 [32]            1h,  6h,  Ch,  6h
+           0040303c [36]            6h,  6h,  Fh,  5h
+           00403040 [40]            2h,  6h,  9h,  7h
+           00403044 [44]            4h,  7h,  5h,  6h
+           00403048 [48]            Fh,  5h,  3h,  6h
+           0040304c [52]            Fh,  6h,  5h,  7h
+           00403050 [56]            Eh,  6h,  4h,  7h
+           00403054 [60]            3h,  7h,  Dh,  7h
+           00403058 [64]            0h,  0h,  0h,  0h
+           0040305c [68]            0h,  0h,  0h,  0h
+           00403060 [72]            0h,  0h,  0h,  0h
+           00403064 [76]            0h,  0h,  0h,  0h
+[...]
+</code></pre>
+
+<p>These numbers are the low and high four bits of every flag byte.
+All that&rsquo;s left to do is to merge them back together and print them.</p>
+
+<p>We can do this with python:</p>
+
+<pre><code>#!/usr/bin/env python
+
+# to get the hexstring out of ghidra select the variable, 
+# select &quot;Copy special...&quot; on right click, 
+# and chose &quot;byte string (no spaces)&quot;
+hexstring = &quot;0d0402050d04030404040304040506040b07050606070506020709070f05080601060c0606060f0502060907040705060f0503060f0605070e06040703070d07000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000&quot;
+bytes = bytearray(hexstring.decode(&quot;hex&quot;))
+bytes.reverse() # allows us to pop from the end
+
+flagstr = &quot;&quot;
+
+while len(bytes):
+    low = bytes.pop()
+    high = bytes.pop()
+    fullbyte = (high&lt;&lt;4) | low
+
+    flagstr += chr(fullbyte)
+
+print(flagstr)
+</code></pre>
+
+<p>And this script will finally give you the flag.</p>
+<ul class="pa0">
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/mrmcdctf2019" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">MRMCDCTF2019</a>
+   </li>
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/ctf" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">CTF</a>
+   </li>
+  
+</ul>
+<div class="mt6">
+        
+      </div>
+    </section>
+
+    <aside class="w-30-l mt6-l">
+
+
+
+
+  <div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">Related</p>
+    <ul class="pa0 list">
+	   
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/">MRMCDCTF2019: Cereal</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-sitting_duck/">MRMCDCTF2019: Sitting duck</a>
+        </li>
+	    
+    </ul>
+</div>
+
+</aside>
+
+  </article>
+
+    </main>
+    <footer class="bg-navy bottom-0 w-100 pa3" role="contentinfo">
+  <div class="flex justify-between">
+  <a class="f4 fw4 hover-white no-underline white-70 dn dib-ns pv2 ph3" href="https://schlafwandler.github.io" >
+    &copy; 2019 Pointers to the void
+  </a>
+    <div>
+
+
+
+
+
+
+
+
+
+
+</div>
+  </div>
+</footer>
+
+    
+
+  <script src="https://schlafwandler.github.io/dist/js/app.3fc0f988d21662902933.js"></script>
+
+
+  </body>
+</html>
