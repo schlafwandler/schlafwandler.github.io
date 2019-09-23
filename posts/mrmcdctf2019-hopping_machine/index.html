@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    
+    <title>Pointers to the void  | MRMCDCTF2019: Hopping machine</title>
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+
+    <meta name="viewport" content="width=device-width,minimum-scale=1">
+    <meta name="generator" content="Hugo 0.52" />
+    
+    
+      <META NAME="ROBOTS" CONTENT="INDEX, FOLLOW">
+    
+
+    
+    
+      <link href="https://schlafwandler.github.io/dist/css/app.d98f2eb6bcd1eaedb7edf166bd16af26.css" rel="stylesheet">
+    
+
+    
+
+    
+      
+    
+
+    <meta content="CTF, capture the flag, linux, binary, python, virtual machine" name="keywords">
+    <meta content=" - " property="og:description">
+
+    
+
+    <meta property="og:title" content="MRMCDCTF2019: Hopping machine" />
+<meta property="og:description" content="Solution to Hopping machine (medium) from MRMCDCTF 2019 Hopping machine is completely different from the other reversing challenges I wrote for this CTF. In some ways it&rsquo;s an extension of an older challenge (Friendly Machine) I had written for MRMCDCTF 2017.
+What makes it different? First, it&rsquo;s written entirely in python. And second, the complete source code is provided with the challenge.
+It therefore requires a different approach than the binary reversing challenges." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://schlafwandler.github.io/posts/mrmcdctf2019-hopping_machine/" /><meta property="article:published_time" content="2019-09-23T15:54:23&#43;02:00"/>
+<meta property="article:modified_time" content="2019-09-23T15:54:23&#43;02:00"/>
+
+
+<meta itemprop="name" content="MRMCDCTF2019: Hopping machine">
+<meta itemprop="description" content="Solution to Hopping machine (medium) from MRMCDCTF 2019 Hopping machine is completely different from the other reversing challenges I wrote for this CTF. In some ways it&rsquo;s an extension of an older challenge (Friendly Machine) I had written for MRMCDCTF 2017.
+What makes it different? First, it&rsquo;s written entirely in python. And second, the complete source code is provided with the challenge.
+It therefore requires a different approach than the binary reversing challenges.">
+
+
+<meta itemprop="datePublished" content="2019-09-23T15:54:23&#43;02:00" />
+<meta itemprop="dateModified" content="2019-09-23T15:54:23&#43;02:00" />
+<meta itemprop="wordCount" content="1330">
+
+
+
+<meta itemprop="keywords" content="MRMCDCTF2019,CTF," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="MRMCDCTF2019: Hopping machine"/>
+<meta name="twitter:description" content="Solution to Hopping machine (medium) from MRMCDCTF 2019 Hopping machine is completely different from the other reversing challenges I wrote for this CTF. In some ways it&rsquo;s an extension of an older challenge (Friendly Machine) I had written for MRMCDCTF 2017.
+What makes it different? First, it&rsquo;s written entirely in python. And second, the complete source code is provided with the challenge.
+It therefore requires a different approach than the binary reversing challenges."/>
+
+      
+    
+  </head>
+
+  <body class="ma0 avenir bg-near-white">
+
+    
+   
+  
+
+  <header>
+    <div class="bg-navy">
+      <nav class="pv3 ph3 ph4-ns" role="navigation">
+  <div class="flex-l justify-between items-center center">
+    <a href="https://schlafwandler.github.io" class="f3 fw2 hover-white no-underline white-90 dib">
+      Pointers to the void
+    </a>
+    <div class="flex-l items-center">
+      
+
+      
+        <ul class="pl0 mr3">
+          
+          <li class="list f5 f4-ns fw4 dib pr3">
+            <a class="hover-white no-underline white-90" href="https://schlafwandler.github.io/tags/" title=" page">
+              
+            </a>
+          </li>
+          
+        </ul>
+      
+      
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+  </div>
+</nav>
+
+    </div>
+  </header>
+
+
+
+    <main class="pb7" role="main">
+      
+  
+  <article class="flex-l flex-wrap justify-between mw8 center ph3">
+
+    <header class="mt4 w-100">
+      <p class="f6 b helvetica tracked">
+          
+        POSTS
+      </p>
+      <h1 class="f1 athelas mb1">MRMCDCTF2019: Hopping machine</h1>
+      
+      <time class="f6 mv4 dib tracked" datetime="2019-09-23T15:54:23&#43;02:00">September 23, 2019</time>      
+      
+      
+    </header>
+
+    <section class="nested-copy-line-height lh-copy serif f4 nested-links nested-img mid-gray pr4-l w-two-thirds-l">
+
+<h2 id="solution-to-hopping-machine-medium-from-mrmcdctf-2019">Solution to Hopping machine (medium) from MRMCDCTF 2019</h2>
+
+<p><a href="https://github.com/schlafwandler/CTF-challenges/tree/master/MRMCDCTF-2019/reversing/hopping_machine">Hopping machine</a>
+is completely different from
+the other reversing challenges I wrote for this CTF.
+In some ways it&rsquo;s an extension of an older challenge (<a href="https://shiftordie.de/blog/2017/09/10/mrmcdctf-writeup-friendly-machine/">Friendly Machine</a>) I had written for MRMCDCTF 2017.</p>
+
+<p>What makes it different?
+First, it&rsquo;s written entirely in python.
+And second, the complete <a href="https://github.com/schlafwandler/CTF-challenges/blob/master/MRMCDCTF-2019/reversing/hopping_machine/hopping_machine.py">source code</a> is provided with the challenge.</p>
+
+<p>It therefore requires a different approach than the binary reversing challenges.</p>
+
+<p>So: what do we see when eyeballing the source? <br />
+There are two functions, &lsquo;main&rsquo; and &lsquo;bie1aibeathae6pieTh6&rsquo;.
+The main does not seem too surprising:</p>
+
+<pre><code class="language-python">def main():
+    print(&quot;The password is the flag!&quot;)
+    print(&quot;Password:&quot;)
+    password = raw_input()
+    password += &quot; &quot;*128
+
+    correct = bie1aibeathae6pieTh6(code,password)
+
+    if correct:
+        print(&quot;######################################&quot;)
+        print(&quot;###   Correct! This is the flag!   ###&quot;)
+        print(&quot;#################We#####################&quot;)
+    else:        
+        print(&quot;Wrong. Try again.&quot;)
+</code></pre>
+
+<p>So the complete check is handled in &lsquo;bie1aibeathae6pieTh6&rsquo;, which gets the password and &lsquo;code&rsquo; as a parameter.
+The variable &lsquo;code&rsquo; is defined below:</p>
+
+<pre><code class="language-python">code = &quot;&quot;&quot;R\x00RMR\x00{MTR\x9eR\x1e{_R\x11CAApV2TR\x01{RRMTR\x02{R*CRgCTR\r{Z3IDRhMTR\x03{RCMTR\x14{R\x98_TR\x05{R\x17CRTCotac4TR\x07{R\x1fCfRYCTENR\x18{R\x90_TR\x08{R{MTR?R!9hVc{_3NnR\xbcCTR\n{RnMTR\x0b{6dlRoMTR\x0e{ReMTR\xa2R\x1c{_R\x07CTR\x0f{R\x8e_TR\x10{R\xa1_OeTR\x11{R\x90_TR\x12{R\x87_TR\x13{R\x8c_TR&quot;R\x1b{_R\x85CTR\x15{WR\x91_TR\x0c{RtMSP2PITR\x16gZ{R\x92dXtSp_TR\x17{R\xa1O_TRTR\x06{MTR\x04{RDMTR\x9eR\x19{_DvSR\x10WE0VCTRLR\x1a{_R\xbbCTR\xa4YAlR\x1dJF7{_R\x17CTR\t{RaMTR\x92R\x1f{_R\x01CTR\x16R {_R\x88CTa}\x05R\x01zR\x00Qz&quot;&quot;&quot;
+</code></pre>
+
+<p>The meaning of that is somewhat less obvious.</p>
+
+<p>Let&rsquo;s have a look at bie1aibeathae6pieTh6:</p>
+
+<pre><code class="language-python">def bie1aibeathae6pieTh6(ceiqueiD8EePeechuj8g,eeH9ohYaitiYohKai7pa):
+    eid0zahca1quauthaKoi = []
+    uoYah1ahh2Eijah6eitu = 0
+
+    while True:
+        Ki8Hie7otaed7zae9eV4 = ceiqueiD8EePeechuj8g[uoYah1ahh2Eijah6eitu]
+
+        if Ki8Hie7otaed7zae9eV4 == Yei1oHai2shaa7oonieD:
+            eid0zahca1quauthaKoi += [ord(ceiqueiD8EePeechuj8g[uoYah1ahh2Eijah6eitu+1])]
+            uoYah1ahh2Eijah6eitu += 2
+        elif Ki8Hie7otaed7zae9eV4 == Feo9thouN6zaegei0un5:
+            eid0zahca1quauthaKoi.pop()
+            uoYah1ahh2Eijah6eitu += 1
+        elif Ki8Hie7otaed7zae9eV4 == eigh2goong0oogh0uW2b:
+            xei2eeWair6iePae4uoh = eid0zahca1quauthaKoi[-1]
+            ohziekie8Iewohgae7ah = eid0zahca1quauthaKoi[-2]
+            del eid0zahca1quauthaKoi[-1]
+            del eid0zahca1quauthaKoi[-1]
+            eid0zahca1quauthaKoi += [(xei2eeWair6iePae4uoh + ohziekie8Iewohgae7ah)&amp;0xff]
+            uoYah1ahh2Eijah6eitu += 1
+        elif Ki8Hie7otaed7zae9eV4 == coo9Do1zeeyae5aequee:
+            xei2eeWair6iePae4uoh = eid0zahca1quauthaKoi.pop()
+            ohziekie8Iewohgae7ah = eid0zahca1quauthaKoi[-1]
+            eid0zahca1quauthaKoi = eid0zahca1quauthaKoi[:-1]
+            eid0zahca1quauthaKoi += [(xei2eeWair6iePae4uoh - ohziekie8Iewohgae7ah)&amp;0xff]
+            uoYah1ahh2Eijah6eitu += 1
+        elif Ki8Hie7otaed7zae9eV4 == IboshaiHusiewaezool7:
+            xei2eeWair6iePae4uoh = eid0zahca1quauthaKoi[-1]
+            del eid0zahca1quauthaKoi[-1]
+            ohziekie8Iewohgae7ah = eid0zahca1quauthaKoi[-1]
+            del eid0zahca1quauthaKoi[-1]
+            eid0zahca1quauthaKoi += [xei2eeWair6iePae4uoh ^ ohziekie8Iewohgae7ah]
+            uoYah1ahh2Eijah6eitu += 1
+        elif Ki8Hie7otaed7zae9eV4 == iJ8yekaiquootoobooph:
+            eid0zahca1quauthaKoi += [ord(eeH9ohYaitiYohKai7pa[eid0zahca1quauthaKoi[-1]])]
+            del eid0zahca1quauthaKoi[-2]
+            uoYah1ahh2Eijah6eitu += 1
+        elif Ki8Hie7otaed7zae9eV4 == yahth9tuFei3eexaisha:
+            xei2eeWair6iePae4uoh = eid0zahca1quauthaKoi.pop()
+            ohziekie8Iewohgae7ah = eid0zahca1quauthaKoi.pop()
+            eid0zahca1quauthaKoi += range(0,1)
+            eid0zahca1quauthaKoi[-1] = xei2eeWair6iePae4uoh | ohziekie8Iewohgae7ah
+            uoYah1ahh2Eijah6eitu += 1
+        elif Ki8Hie7otaed7zae9eV4 == Thee4co8ateinie3mah4:
+            eid0zahca1quauthaKoi += [eid0zahca1quauthaKoi[-1]]
+            uoYah1ahh2Eijah6eitu += 1
+        elif Ki8Hie7otaed7zae9eV4 == their0eecah3pah4hiSh:
+            xei2eeWair6iePae4uoh = eid0zahca1quauthaKoi[-1]
+            del eid0zahca1quauthaKoi[-1]
+            if xei2eeWair6iePae4uoh:
+                uoYah1ahh2Eijah6eitu += ord(ceiqueiD8EePeechuj8g[uoYah1ahh2Eijah6eitu+1])
+            else:
+                uoYah1ahh2Eijah6eitu += 2
+        elif Ki8Hie7otaed7zae9eV4 == ohshaChaingoowoo7Ou6:
+            return eid0zahca1quauthaKoi.pop()
+            uoYah1ahh2Eijah6eitu += 1
+        elif Ki8Hie7otaed7zae9eV4 == fees4Quoo2geij2achau:
+            eid0zahca1quauthaKoi[-1] = ~eid0zahca1quauthaKoi[-1]
+            uoYah1ahh2Eijah6eitu += 1
+        else:
+            uoYah1ahh2Eijah6eitu += 1
+        uoYah1ahh2Eijah6eitu = uoYah1ahh2Eijah6eitu % len(ceiqueiD8EePeechuj8g)
+</code></pre>
+
+<p>Well, obviously not optimised for maintainability.</p>
+
+<p>No comments, and all variables are renamed randomly.
+But we know the &lsquo;true&rsquo; name of two variable from main: that the variable named &lsquo;code&rsquo; in main is now named &lsquo;ceiqueiD8EePeechuj8g&rsquo;,
+and the password is now called &lsquo;eeH9ohYaitiYohKai7pa&rsquo;.</p>
+
+<p>The function is dominated by an endless loop, and this loop is mostly filled with a large if-elif-elif-else construct (python has no switch-statement):</p>
+
+<pre><code class="language-python">    while True:
+        Ki8Hie7otaed7zae9eV4 = ceiqueiD8EePeechuj8g[uoYah1ahh2Eijah6eitu]
+
+        if Ki8Hie7otaed7zae9eV4 == Yei1oHai2shaa7oonieD:
+            eid0zahca1quauthaKoi += [ord(ceiqueiD8EePeechuj8g[uoYah1ahh2Eijah6eitu+1])]
+            uoYah1ahh2Eijah6eitu += 2
+        elif Ki8Hie7otaed7zae9eV4 == Feo9thouN6zaegei0un5:
+            eid0zahca1quauthaKoi.pop()
+            uoYah1ahh2Eijah6eitu += 1
+        elif Ki8Hie7otaed7zae9eV4 == eigh2goong0oogh0uW2b:
+[...]
+</code></pre>
+
+<p>We already know that ceiqueiD8EePeechuj8g is the code passed by main.
+At the start of each iteration, the uoYah1ahh2Eijah6eitu&rsquo;th element it read into Ki8Hie7otaed7zae9eV4.
+This is then checked in the if-elif-pseudo-switch construct and determines what happens next.
+At last, the uoYah1ahh2Eijah6eitu is changed, most often incremented by 1.
+Then the loop starts again.</p>
+
+<p>This loop is a very simple virtual machine.
+ceiqueiD8EePeechuj8g is the code memory, uoYah1ahh2Eijah6eitu is the instruction pointer, and Ki8Hie7otaed7zae9eV4 is the instruction executed right now.</p>
+
+<p>And what is eid0zahca1quauthaKoi?
+It is initialised as an empty list, and most instructions use it somehow.
+But only in a very specific way:
+they either reference items at the end of the list, remove items from the end or append items.
+Well, eid0zahca1quauthaKoi is a stack, implemented by a python list.
+And the whole function is a <a href="https://en.wikipedia.org/wiki/Stack_machine">stack machine</a>.</p>
+
+<p>With this knowledge, we can now identify what each instruction is doing.
+And, since this still is a python file, we can simple add debug/instrumentation messages.</p>
+
+<p>You can find a version with instrumentation output <a href="https://github.com/schlafwandler/CTF-challenges/blob/master/MRMCDCTF-2019/reversing/hopping_machine/solution/hopping_machine.instrumented.py">here</a>.</p>
+
+<p>It produces output like this:</p>
+
+<pre><code>The password is the flag!
+Password:
+push 0x0
+Stack: [0]
+push 0x4d
+Stack: [0, 77]
+push 0x0
+Stack: [0, 77, 0]
+load 66 (0 char of password)
+Stack: [0, 77, 102]
+sub 0x66 - 0x4d
+Stack: [0, 25]
+or 0x19 | 0x0
+Stack: [25]
+push 0x9e
+Stack: [25, 158]
+push 0x1e
+Stack: [25, 158, 30]
+load 20 (30 char of password)
+Stack: [25, 158, 32]
+add 0x20 + 0x9e
+Stack: [25, 190]
+push 0x11
+Stack: [25, 190, 17]
+xor 0x11 ^ 0xbe
+Stack: [25, 175]
+[ stripped out some nops ]
+or 0xaf | 0x19
+Stack: [191]
+push 0x1
+Stack: [191, 1]
+load 6f (1 char of password)
+Stack: [191, 111]
+
+[...]
+
+or 0xb3 | 0xff
+Stack: [255]
+push 0x16
+Stack: [255, 22]
+push 0x20
+load 20 (32 char of password)
+Stack: [255, 22, 32]
+Stack: [255, 22, 32]
+add 0x20 + 0x16
+Stack: [255, 54]
+push 0x88
+Stack: [255, 54, 136]
+xor 0x88 ^ 0x36
+Stack: [255, 190]
+or 0xbe | 0xff
+Stack: [255]
+nop
+Stack: [255]
+jmp if 0xff!=0
+Stack: []
+push 0x0
+Stack: [0]
+nop
+Stack: [0]
+FINISH return 0x0
+Wrong. Try again.
+</code></pre>
+
+<p>What do we see here?</p>
+
+<p>First, we can see the the characters of the password are tested one by one, but not in the order they appear in the password:
+Char 0 is tested first, than char 30, than char 1&hellip;
+The machine has only the stack to keep a state, and between two tests there is only on value on it.
+So we can assume that each test is independent of the others.</p>
+
+<p>Second, we can see the the single-character-tests are not the same:
+The testing for char 0 involves a subtraction, the testing of char 30 involves a xor, and char 32 is tested with an addition and a xor.</p>
+
+<p>Third, we can see that there is one character at the bottom position of the stack that&rsquo;s initialised to 0.
+After every single-character-test, some result is or&rsquo;d with this value.
+And at the very end there is a conditional jump (the only jump in the code) depending on this value, that jumps only if the value is not 0.
+Here, the jump is taken, and shortly thereafter the function/machine quits and returns 0 (which is interpreted as &lsquo;incorrect&rsquo; by main).</p>
+
+<p>The conclusion here is, that each character of the password is tested with some operations which result in 0 if and only if the character is correct.
+These results are or&rsquo;d together over time.
+If that results in 0 at the end, the correct password was entered.</p>
+
+<p>So how do we solve this?
+One way would be to read the code and calculate what input will lead to a 0 in the end.
+For example, we can see that the substraction-test for char 0 would result in 0 if the input value is 0x4d
+(&rsquo;M&rsquo;; not that surprising, since all flags start with &ldquo;MRMCDCTF{&rdquo;).</p>
+
+<p>An other way would be to feed it all into a theorem prover like <a href="https://github.com/Z3Prover/z3">Z3</a>.
+During the CTF, this approach resulted in the quickest solve of this challenge.</p>
+
+<p>But there is yet another option:
+We can change the code of the machine as we wish.
+And we know that if there is an or-operation on the cumulative result on the bottom of the stack, and one of the values is <em>not</em> 0,
+that the last single-character-test has failed.</p>
+
+<p>And if we always know which character is wrong, we can brute force the password one character at a time, with only a few thousand tries.</p>
+
+<p>All we have to do is add some code that calls bie1aibeathae6pieTh6 with possible passwords, and some modifications in the machine that relay back
+which character was wrong.
+A dirty implementation of this approach can be found <a href="https://github.com/schlafwandler/CTF-challenges/blob/master/MRMCDCTF-2019/reversing/hopping_machine/solution/hopping_machine.bruteforce.py">here</a>.</p>
+
+<p>And yes, one could have optimised it even more:
+since the characters of the password are tested independently of each other and we see the result of each test, we could have brute forces all characters at the same time and be done after less than 256 tries.
+But given that even this dirty approach takes less than a second on my machine (and could even be faster without the debug output),
+I consider this a minor imperfection.</p>
+<ul class="pa0">
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/mrmcdctf2019" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">MRMCDCTF2019</a>
+   </li>
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/ctf" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">CTF</a>
+   </li>
+  
+</ul>
+<div class="mt6">
+        
+      </div>
+    </section>
+
+    <aside class="w-30-l mt6-l">
+
+
+
+
+  <div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">Related</p>
+    <ul class="pa0 list">
+	   
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/">MRMCDCTF2019: Cereal</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-sitting_duck/">MRMCDCTF2019: Sitting duck</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-slicer/">MRMCDCTF2019: Slicer</a>
+        </li>
+	    
+    </ul>
+</div>
+
+</aside>
+
+  </article>
+
+    </main>
+    <footer class="bg-navy bottom-0 w-100 pa3" role="contentinfo">
+  <div class="flex justify-between">
+  <a class="f4 fw4 hover-white no-underline white-70 dn dib-ns pv2 ph3" href="https://schlafwandler.github.io" >
+    &copy; 2019 Pointers to the void
+  </a>
+    <div>
+
+
+
+
+
+
+
+
+
+
+</div>
+  </div>
+</footer>
+
+    
+
+  <script src="https://schlafwandler.github.io/dist/js/app.3fc0f988d21662902933.js"></script>
+
+
+  </body>
+</html>

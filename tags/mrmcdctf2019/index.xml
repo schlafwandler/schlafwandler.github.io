@@ -6,10 +6,21 @@
     <description>Recent content in Mrmcdctf2019 on Pointers to the void</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 19 Sep 2019 17:01:00 +0200</lastBuildDate>
+    <lastBuildDate>Mon, 23 Sep 2019 15:54:23 +0200</lastBuildDate>
     
 	<atom:link href="https://schlafwandler.github.io/tags/mrmcdctf2019/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>MRMCDCTF2019: Hopping machine</title>
+      <link>https://schlafwandler.github.io/posts/mrmcdctf2019-hopping_machine/</link>
+      <pubDate>Mon, 23 Sep 2019 15:54:23 +0200</pubDate>
+      
+      <guid>https://schlafwandler.github.io/posts/mrmcdctf2019-hopping_machine/</guid>
+      <description>Solution to Hopping machine (medium) from MRMCDCTF 2019 Hopping machine is completely different from the other reversing challenges I wrote for this CTF. In some ways it&amp;rsquo;s an extension of an older challenge (Friendly Machine) I had written for MRMCDCTF 2017.
+What makes it different? First, it&amp;rsquo;s written entirely in python. And second, the complete source code is provided with the challenge.
+It therefore requires a different approach than the binary reversing challenges.</description>
+    </item>
     
     <item>
       <title>MRMCDCTF2019: Slicer</title>
