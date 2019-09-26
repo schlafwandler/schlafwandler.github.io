@@ -38,7 +38,7 @@
 <meta property="og:description" content="" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://schlafwandler.github.io/" />
-<meta property="og:updated_time" content="2019-09-23T15:54:23&#43;02:00"/>
+<meta property="og:updated_time" content="2019-09-26T23:38:04&#43;02:00"/>
 
 <meta itemprop="name" content="Pointers to the void">
 <meta itemprop="description" content="">
@@ -138,6 +138,32 @@
       
       <div class="blah w-100">
         <h1 class="f3 fw1 athelas mt0 lh-title">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-misguided/" class="color-inherit dim link">
+            MRMCDCTF2019: Misguided
+            </a>
+        </h1>
+        <div class="f6 f5-l lh-copy nested-copy-line-height nested-links">
+          Solution to Misguided (easy - medium) from MRMCDCTF 2019 Misguided is another Linux binary reversing challenge I had written for MRMCDCTF 2019. This one employs some simple obfuscation: Some entries in the symbol table are mixed up.
+When opening the file in Ghidra (like we have done with Cereal or Slicer before), at first, everything seems normal.
+This changes once we take at look at main, which decompiles to this:
+        </div>
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-misguided/" class="ba b--moon-gray bg-light-gray br2 color-inherit dib f7 hover-bg-moon-gray link mt2 ph2 pv1">read more</a>
+        
+      </div>
+    </div>
+  </div>
+</article>
+
+          </div>
+        
+          <div class="relative w-100 mb4">
+            
+<article class="bb b--black-10">
+  <div class="db pv4 ph3 ph0-l no-underline dark-gray">
+    <div class="flex flex-column flex-row-ns">
+      
+      <div class="blah w-100">
+        <h1 class="f3 fw1 athelas mt0 lh-title">
           <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-hopping_machine/" class="color-inherit dim link">
             MRMCDCTF2019: Hopping machine
             </a>
@@ -169,36 +195,11 @@ It therefore requires a different approach than the binary reversing challenges.
             </a>
         </h1>
         <div class="f6 f5-l lh-copy nested-copy-line-height nested-links">
-          Solution to Slicer (easy) from MRMCDCTF 2019 Slicer is one of the Windows challenges I have written for MRMCDCTF 2019. It&rsquo;s an other easy challenge, but this time the binary is an .exe (PE32) executable.
+          Solution to Slicer (easy) from MRMCDCTF 2019 Slicer is one of the Windows challenges I have written for MRMCDCTF 2019. It&rsquo;s another easy challenge, but this time the binary is an .exe (PE32) executable.
 The challenge was also tested under wine (4.0), so if you want to try out some of the tricks for debugging wine applications, this would be a good opportunity.
 But for this text, I will stick to Ghidra .
         </div>
           <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-slicer/" class="ba b--moon-gray bg-light-gray br2 color-inherit dib f7 hover-bg-moon-gray link mt2 ph2 pv1">read more</a>
-        
-      </div>
-    </div>
-  </div>
-</article>
-
-          </div>
-        
-          <div class="relative w-100 mb4">
-            
-<article class="bb b--black-10">
-  <div class="db pv4 ph3 ph0-l no-underline dark-gray">
-    <div class="flex flex-column flex-row-ns">
-      
-      <div class="blah w-100">
-        <h1 class="f3 fw1 athelas mt0 lh-title">
-          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/" class="color-inherit dim link">
-            MRMCDCTF2019: Cereal
-            </a>
-        </h1>
-        <div class="f6 f5-l lh-copy nested-copy-line-height nested-links">
-          Solution to Cereal (easy) from MRMCDCTF 2019 Cereal is an other reversing challenge I have written for this years MRMCD CTF. But unlike Sitting duck, this reversing challenge actually involves reversing!
-At first look the binary is similar to Sitting duck: It&rsquo;s a 64 bit ELF executable, and it asks us for the password/flag when started. But simply trying strings will bring up nothing useful, so we have to actually analyse what the program does internally to find the flag.
-        </div>
-          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/" class="ba b--moon-gray bg-light-gray br2 color-inherit dib f7 hover-bg-moon-gray link mt2 ph2 pv1">read more</a>
         
       </div>
     </div>
@@ -215,6 +216,12 @@ At first look the binary is similar to Sitting duck: It&rsquo;s a 64 bit ELF exe
         
         
           <h2 class="f5 fw4 mb4 dib mr3">
+            <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/" class="link black dim">
+              MRMCDCTF2019: Cereal
+            </a>
+          </h2>
+        
+          <h2 class="f5 fw4 mb4 dib mr3">
             <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-sitting_duck/" class="link black dim">
               MRMCDCTF2019: Sitting duck
             </a>
@@ -229,12 +236,6 @@ At first look the binary is similar to Sitting duck: It&rsquo;s a 64 bit ELF exe
           <h2 class="f5 fw4 mb4 dib mr3">
             <a href="https://schlafwandler.github.io/posts/attacking-wine-part-iii/" class="link black dim">
               Attacking applications running under WINE (Part III)
-            </a>
-          </h2>
-        
-          <h2 class="f5 fw4 mb4 dib mr3">
-            <a href="https://schlafwandler.github.io/posts/attacking-wine-part-ii/" class="link black dim">
-              Attacking applications running under WINE (Part II)
             </a>
           </h2>
         

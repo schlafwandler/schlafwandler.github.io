@@ -6,10 +6,21 @@
     <description>Recent content in It Security on Pointers to the void</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 23 Sep 2019 15:54:23 +0200</lastBuildDate>
+    <lastBuildDate>Thu, 26 Sep 2019 23:38:04 +0200</lastBuildDate>
     
 	<atom:link href="https://schlafwandler.github.io/categories/it-security/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>MRMCDCTF2019: Misguided</title>
+      <link>https://schlafwandler.github.io/posts/mrmcdctf2019-misguided/</link>
+      <pubDate>Thu, 26 Sep 2019 23:38:04 +0200</pubDate>
+      
+      <guid>https://schlafwandler.github.io/posts/mrmcdctf2019-misguided/</guid>
+      <description>Solution to Misguided (easy - medium) from MRMCDCTF 2019 Misguided is another Linux binary reversing challenge I had written for MRMCDCTF 2019. This one employs some simple obfuscation: Some entries in the symbol table are mixed up.
+When opening the file in Ghidra (like we have done with Cereal or Slicer before), at first, everything seems normal.
+This changes once we take at look at main, which decompiles to this:</description>
+    </item>
     
     <item>
       <title>MRMCDCTF2019: Hopping machine</title>
@@ -28,7 +39,7 @@ It therefore requires a different approach than the binary reversing challenges.
       <pubDate>Thu, 19 Sep 2019 17:01:00 +0200</pubDate>
       
       <guid>https://schlafwandler.github.io/posts/mrmcdctf2019-slicer/</guid>
-      <description>Solution to Slicer (easy) from MRMCDCTF 2019 Slicer is one of the Windows challenges I have written for MRMCDCTF 2019. It&amp;rsquo;s an other easy challenge, but this time the binary is an .exe (PE32) executable.
+      <description>Solution to Slicer (easy) from MRMCDCTF 2019 Slicer is one of the Windows challenges I have written for MRMCDCTF 2019. It&amp;rsquo;s another easy challenge, but this time the binary is an .exe (PE32) executable.
 The challenge was also tested under wine (4.0), so if you want to try out some of the tricks for debugging wine applications, this would be a good opportunity.
 But for this text, I will stick to Ghidra .</description>
     </item>
@@ -39,7 +50,7 @@ But for this text, I will stick to Ghidra .</description>
       <pubDate>Tue, 17 Sep 2019 18:55:24 +0200</pubDate>
       
       <guid>https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/</guid>
-      <description>Solution to Cereal (easy) from MRMCDCTF 2019 Cereal is an other reversing challenge I have written for this years MRMCD CTF. But unlike Sitting duck, this reversing challenge actually involves reversing!
+      <description>Solution to Cereal (easy) from MRMCDCTF 2019 Cereal is another reversing challenge I have written for this years MRMCD CTF. But unlike Sitting duck, this reversing challenge actually involves reversing!
 At first look the binary is similar to Sitting duck: It&amp;rsquo;s a 64 bit ELF executable, and it asks us for the password/flag when started. But simply trying strings will bring up nothing useful, so we have to actually analyse what the program does internally to find the flag.</description>
     </item>
     

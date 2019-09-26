@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    
+    <title>Pointers to the void  | MRMCDCTF2019: Misguided</title>
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+
+    <meta name="viewport" content="width=device-width,minimum-scale=1">
+    <meta name="generator" content="Hugo 0.52" />
+    
+    
+      <META NAME="ROBOTS" CONTENT="INDEX, FOLLOW">
+    
+
+    
+    
+      <link href="https://schlafwandler.github.io/dist/css/app.d98f2eb6bcd1eaedb7edf166bd16af26.css" rel="stylesheet">
+    
+
+    
+
+    
+      
+    
+
+    <meta content="CTF, capture the flag, linux, binary, gdb, ghidra, gef, reversing" name="keywords">
+    <meta content=" - " property="og:description">
+
+    
+
+    <meta property="og:title" content="MRMCDCTF2019: Misguided" />
+<meta property="og:description" content="Solution to Misguided (easy - medium) from MRMCDCTF 2019 Misguided is another Linux binary reversing challenge I had written for MRMCDCTF 2019. This one employs some simple obfuscation: Some entries in the symbol table are mixed up.
+When opening the file in Ghidra (like we have done with Cereal or Slicer before), at first, everything seems normal.
+This changes once we take at look at main, which decompiles to this:" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://schlafwandler.github.io/posts/mrmcdctf2019-misguided/" /><meta property="article:published_time" content="2019-09-26T23:38:04&#43;02:00"/>
+<meta property="article:modified_time" content="2019-09-26T23:38:04&#43;02:00"/>
+
+
+<meta itemprop="name" content="MRMCDCTF2019: Misguided">
+<meta itemprop="description" content="Solution to Misguided (easy - medium) from MRMCDCTF 2019 Misguided is another Linux binary reversing challenge I had written for MRMCDCTF 2019. This one employs some simple obfuscation: Some entries in the symbol table are mixed up.
+When opening the file in Ghidra (like we have done with Cereal or Slicer before), at first, everything seems normal.
+This changes once we take at look at main, which decompiles to this:">
+
+
+<meta itemprop="datePublished" content="2019-09-26T23:38:04&#43;02:00" />
+<meta itemprop="dateModified" content="2019-09-26T23:38:04&#43;02:00" />
+<meta itemprop="wordCount" content="1634">
+
+
+
+<meta itemprop="keywords" content="MRMCDCTF2019,CTF," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="MRMCDCTF2019: Misguided"/>
+<meta name="twitter:description" content="Solution to Misguided (easy - medium) from MRMCDCTF 2019 Misguided is another Linux binary reversing challenge I had written for MRMCDCTF 2019. This one employs some simple obfuscation: Some entries in the symbol table are mixed up.
+When opening the file in Ghidra (like we have done with Cereal or Slicer before), at first, everything seems normal.
+This changes once we take at look at main, which decompiles to this:"/>
+
+      
+    
+  </head>
+
+  <body class="ma0 avenir bg-near-white">
+
+    
+   
+  
+
+  <header>
+    <div class="bg-navy">
+      <nav class="pv3 ph3 ph4-ns" role="navigation">
+  <div class="flex-l justify-between items-center center">
+    <a href="https://schlafwandler.github.io" class="f3 fw2 hover-white no-underline white-90 dib">
+      Pointers to the void
+    </a>
+    <div class="flex-l items-center">
+      
+
+      
+        <ul class="pl0 mr3">
+          
+          <li class="list f5 f4-ns fw4 dib pr3">
+            <a class="hover-white no-underline white-90" href="https://schlafwandler.github.io/tags/" title=" page">
+              
+            </a>
+          </li>
+          
+        </ul>
+      
+      
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+  </div>
+</nav>
+
+    </div>
+  </header>
+
+
+
+    <main class="pb7" role="main">
+      
+  
+  <article class="flex-l flex-wrap justify-between mw8 center ph3">
+
+    <header class="mt4 w-100">
+      <p class="f6 b helvetica tracked">
+          
+        POSTS
+      </p>
+      <h1 class="f1 athelas mb1">MRMCDCTF2019: Misguided</h1>
+      
+      <time class="f6 mv4 dib tracked" datetime="2019-09-26T23:38:04&#43;02:00">September 26, 2019</time>      
+      
+      
+    </header>
+
+    <section class="nested-copy-line-height lh-copy serif f4 nested-links nested-img mid-gray pr4-l w-two-thirds-l">
+
+<h2 id="solution-to-misguided-easy-medium-from-mrmcdctf-2019">Solution to Misguided (easy - medium) from MRMCDCTF 2019</h2>
+
+<p><a href="https://github.com/schlafwandler/CTF-challenges/tree/master/MRMCDCTF-2019/reversing/misguided">Misguided</a> is another Linux binary reversing challenge I had written for MRMCDCTF 2019.
+This one employs some simple obfuscation:
+Some entries in the symbol table are mixed up.</p>
+
+<p>When opening the file in Ghidra (like we have done with <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/">Cereal</a> or <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-slicer/">Slicer</a> before),
+at first, everything seems normal.</p>
+
+<p>This changes once we take at look at main, which decompiles to this:</p>
+
+<pre><code>void main(void)
+{
+  return;
+}
+</code></pre>
+
+<p>Well, that&rsquo;s a little less functionality than expected.</p>
+
+<p>There are other interesting functions, like <code>check_password</code>, <code>initialise_flag</code>, and <code>read_password</code>.
+But none of them seem to check out.</p>
+
+<p><code>check_password</code>:</p>
+
+<pre><code>/* WARNING: Removing unreachable block (ram,0x00101134) */
+/* WARNING: Removing unreachable block (ram,0x00101140) */
+
+void check_password(void)
+{
+  return;
+}
+</code></pre>
+
+<p><code>initialise_flag</code>:</p>
+
+<pre><code>/* WARNING: Removing unreachable block (ram,0x001010f3) */
+/* WARNING: Removing unreachable block (ram,0x001010ff) */
+
+void initialise_flag(void)
+{
+  return;
+}
+</code></pre>
+
+<p><code>read_password</code>:</p>
+
+<pre><code>void read_password(void)
+{
+  __gmon_start__();
+  return;
+}
+</code></pre>
+
+<p><code>encrypt_password</code>:</p>
+
+<pre><code>void encrypt_password(ulong uParm1,undefined8 uParm2,undefined8 uParm3)
+{
+  long lVar1;
+  
+  read_password();
+  lVar1 = 0;
+  do {
+    (*(code *)(&amp;__frame_dummy_init_array_entry)[lVar1])(uParm1 &amp; 0xffffffff,uParm2,uParm3);
+    lVar1 = lVar1 + 1;
+  } while (lVar1 != 1);
+  return;
+}
+</code></pre>
+
+<p>At least the last one is doing <em>something</em>, but it does not look like encryption.
+But the rest?</p>
+
+<p>What&rsquo;s going on here?</p>
+
+<p>Well, the function names do not match the function.</p>
+
+<p>How can this be?</p>
+
+<p>Well, how does the decompiler know the names of functions in the first place?</p>
+
+<p>The decompiler gets the function names from the <a href="https://refspecs.linuxfoundation.org/elf/gabi4+/ch4.symtab.html">ELF symbol table</a>.
+This table is created by the compiler and contains, among many other things, the names and addresses of the various functions of the binary.
+But this information is not needed by the Linux kernel to load and run the executable.
+It can be removed from the binary without affecting its functionality (see <code>man strip</code>).</p>
+
+<p>But since it&rsquo;s not used by the kernel in any way, it can also be filled with misinformation.
+And this is was has happened here:
+The names of compiler-generated functions (like <code>deregister_tm_clones</code>) were swapped with programmer-written functions (like <code>check_password</code>).
+That&rsquo;s why none of the seemingly interesting functions contained anything interesting, while many of the boring functions do:
+just check out <code>register_tm_clones</code>, <code>deregister_tm_clones</code>, <code>__libc_csu_init</code>, <code>__libc_csu_fini</code> and <code>_start</code>.</p>
+
+<p>But how do you figure this out without knowing it beforehand?</p>
+
+<p>This first way is to look for interesting strings (like we did with <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-slicer/">Slicer</a>):
+The program prints the &ldquo;What is the password?&rdquo; and &ldquo;Try again&rdquo; messages, and the code that references these is definitely a good place to start looking around.</p>
+
+<p>The password prompt gets referenced by <code>register_tm_clones</code>:</p>
+
+<pre><code>                             s_The_password_is_the_flag._What_i_00102008     XREF[1]:     register_tm_clones:001011ab(*)  
+        00102008       ds         &quot;The password is the flag. What is the passwor
+</code></pre>
+
+<p>And both the &ldquo;Wrong&rdquo; and &ldquo;Congratulations!&rdquo; text gets referenced by <code>deregister_tm_clones</code>:</p>
+
+<pre><code>                             s__###############################_00102040     XREF[1]:     deregister_tm_clones:00101397(*)  
+        00102040       ds         &quot;\n###########################################
+                             s_Wrong._Try_again._001020cf                    XREF[1]:     deregister_tm_clones:001013aa(*)  
+        001020cf       ds         &quot;Wrong. Try again.&quot;
+</code></pre>
+
+<p>With both functions it should be obvious that you are onto something.
+From there you may look which functions call theses, and what do they do, and whom do they call.
+The &lsquo;Function Call Graph&rsquo; (Window-&gt;Function Call Graph) from Ghidra can be quite useful here.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-misguided-call_graph_no_imports.png" alt="Ghidra Function Call Graph" /></p>
+
+<p>Another way is to look for interesting imported (library) functions:
+You know from the start that the binary prints something (the messages) and reads something (the password).
+So when you don&rsquo;t know what to do, take a look at the code where this happens.</p>
+
+<p>You can find the imported functions in the Symbol Tree in the upper left corner, under functions - just like the normal functions of the binary.
+With ELF files they appear two times; we are only interested in the first appearance: the indirect jump that references the global offset table.
+References can be displayed in two ways:
+you can rightclick the function in the Symbol Tree and select &lsquo;Show References to&rsquo;.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-misguided-references.png" alt="Ghidra 'Show References to'" />
+Alternatively, you can select the function there and look at the XREFs in the central (&lsquo;Listing&rsquo;) subwindow.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-misguided-references-listing.png" alt="Ghidra References in Listin" />
+Looking there at references to <code>puts</code> gives you <code>register_tm_clones</code> and <code>deregister_tm_clones</code> again:</p>
+
+<pre><code>                **************************************************************
+                *                       THUNK FUNCTION                       *
+                **************************************************************
+                thunk int puts(char * __s)
+                  Thunked-Function: puts
+int               EAX:4          &lt;RETURN&gt;
+char *            RDI:8          __s
+                puts                                            XREF[3]:     register_tm_clones:001011b2(c), 
+                                                                             deregister_tm_clones:0010139e(c), 
+                                                                             deregister_tm_clones:001013b1(c)  
+00101030       JMP        qword ptr [-&gt;puts]                               int puts(char * __s)
+                     -- Flow Override: CALL_RETURN (COMPUTED_CALL_TERMINATOR)
+</code></pre>
+
+<p>And <code>fgets</code> is used by <code>register_tm_clones</code> as well:</p>
+
+<pre><code>                **************************************************************
+                *                       THUNK FUNCTION                       *
+                **************************************************************
+                thunk char * fgets(char * __s, int __n, FILE * __stream)
+                  Thunked-Function: fgets
+char *            RAX:8          &lt;RETURN&gt;
+char *            RDI:8          __s
+int               ESI:4          __n
+FILE *            RDX:8          __stream
+                fgets                                           XREF[1]:     register_tm_clones:001011ca(c)  
+00101070       JMP        qword ptr [-&gt;fgets]                              char * fgets(char * __s, int __n
+                     -- Flow Override: CALL_RETURN (COMPUTED_CALL_TERMINATOR)
+</code></pre>
+
+<p>When beginning with the imported functions and following the call graph, you end with the same &lsquo;interesting&rsquo; functions as with the stings method.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-misguided-call_graph.png" alt="Ghidra Function Call Graph" /></p>
+
+<p>With this, we can start looking at the code. The centerpiece seems to be <code>_start</code>:</p>
+
+<pre><code>void _start(void)
+{
+  undefined8 uVar1;
+  undefined8 uVar2;
+  
+  uVar1 = register_tm_clones();
+  __libc_csu_fini(uVar1);
+  uVar2 = __libc_csu_init();
+  deregister_tm_clones(uVar1,uVar2,uVar2);
+  return;
+}
+</code></pre>
+
+<p>It first calls <code>register_tm_clones</code> (which we have already noted a few times), which prints the password prompt and returns the entered password:</p>
+
+<pre><code>char * register_tm_clones(void)
+{
+  char *__s;
+  
+  __s = (char *)malloc(0x80);
+  puts(&quot;The password is the flag. What is the password?&quot;);
+  fgets(__s,0x80,stdin);
+  strtok(__s,&quot;\n&quot;);
+  return __s;
+}
+</code></pre>
+
+<p>The password is then passed to <code>__libc_csu_fini</code>, which xor&rsquo;s every character with 0x41:</p>
+
+<pre><code>void __libc_csu_fini(long lParm1)
+{
+  int local_c;
+  
+  local_c = 0;
+  while (local_c &lt; 0x80) {
+    *(byte *)(lParm1 + (long)local_c) = *(byte *)(lParm1 + (long)local_c) ^ 0x41;
+    local_c = local_c + 1;
+  }
+  return;
+}
+</code></pre>
+
+<p><code>_start</code> continues to call <code>__libc_csu_init</code>.
+This function allocates a new buffer, fills it with constant data, and returns it to <code>_start</code>.</p>
+
+<pre><code>undefined8 * __libc_csu_init(void)
+{
+  long lVar1;
+  undefined8 *__s;
+  long in_FS_OFFSET;
+  
+  lVar1 = *(long *)(in_FS_OFFSET + 0x28);
+  __s = (undefined8 *)malloc(0x80);
+  memset(__s,0,0x80);
+  *__s = 0x7150205020c130c;
+  __s[1] = 0x242d1e352f2e253a;
+  __s[2] = 0x33361e2429351e35;
+  __s[3] = 0x2d23202d1e262f2e;
+  __s[4] = 0x1e2d2e2e271e3224;
+  *(undefined4 *)(__s + 5) = 0x3c342e38;
+  *(undefined *)((long)__s + 0x2c) = 0x41;
+  if (lVar1 != *(long *)(in_FS_OFFSET + 0x28)) {
+                    /* WARNING: Subroutine does not return */
+    __stack_chk_fail();
+  }
+  return __s;
+}
+</code></pre>
+
+<p>Both the xor-encrypted password and the initialised buffer are at last passed to <code>deregister_tm_clones</code>:</p>
+
+<pre><code>undefined8 deregister_tm_clones(void *pvParm1,void *pvParm2)
+{
+  int iVar1;
+  undefined8 uVar2;
+  
+  iVar1 = memcmp(pvParm1,pvParm2,0x2d);
+  if (iVar1 == 0) {
+    puts(
+        &quot;\n##############################################\n###   Congratulations! This is the flag!  ###\n##############################################\n&quot;
+        );
+    uVar2 = 0;
+  }
+  else {
+    puts(&quot;Wrong. Try again.&quot;);
+    uVar2 = 0xffffffff;
+  }
+  return uVar2;
+}
+</code></pre>
+
+<p><code>deregister_tm_clones</code> does nothing more than call <code>memcmp</code> on both its parameters and prints the &lsquo;Congratulations!&rsquo; or &lsquo;Wrong&rsquo; message if the match or don&rsquo;t match.</p>
+
+<p>So one parameter to <code>memcmp</code> will be the entered password, xor&rsquo;ed with 0x41.
+And the other one will be the correct flag, xor&rsquo;ed with 0x41.</p>
+
+<p>So we need to grap the parameter to <code>memcmp</code> and xor it with 0x41, and the result will be the flag.</p>
+
+<p>One simple way to get the parameter is to run the program in a debugger and set a breakpoint on <code>memcmp</code>.</p>
+
+<pre><code>user@host:$ gdb ./misguided 
+[...]
+69 commands loaded for GDB 8.2.91.20190405-git using Python engine 3.7
+[*] 4 commands could not be loaded, run `gef missing` to know why.
+[+] Configuration from '/home/justus/.gef.rc' restored
+Reading symbols from ./misguided...
+(No debugging symbols found in ./misguided)
+gef➤  b memcmp
+Haltepunkt 1 at 0x1060
+gef➤  r
+Starting program: /media/truecrypt1/ctf/2019_mrmcd/MRMCD2019/reversing/misguided/downloads/misguided 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library &quot;/lib/x86_64-linux-gnu/libthread_db.so.1&quot;.
+The password is the flag. What is the password?
+foo
+
+Breakpoint 1, __memcmp_sse4_1 () at ../sysdeps/x86_64/multiarch/memcmp-sse4.S:50
+50	../sysdeps/x86_64/multiarch/memcmp-sse4.S: Datei oder Verzeichnis nicht gefunden.
+[ Legend: Modified register | Code | Heap | Stack | String ]
+──────────────────────────────────────────────────────────── registers ────
+$rax   : 0x0000555555559260  →  &quot;'..AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA[...]&quot;
+$rbx   : 0x0               
+$rcx   : 0x0000555555559b10  →  0x07150205020c130c
+$rdx   : 0x2d              
+$rsp   : 0x00007fffffffda08  →  0x0000555555555393  →  &lt;deregister_tm_clones+40&gt; test eax, eax
+$rbp   : 0x00007fffffffda20  →  0x00007fffffffda40  →  0x0000555555555410  →  &lt;encrypt_password+0&gt; push r15
+$rsi   : 0x0000555555559b10  →  0x07150205020c130c
+$rdi   : 0x0000555555559260  →  &quot;'..AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA[...]&quot;
+$rip   : 0x00007ffff7d29ed0  →  &lt;__memcmp_sse4_1+0&gt; pxor xmm0, xmm0
+$r8    : 0x0000555555559010  →  0x0000000000000000
+$r9    : 0x00007ffff7b76b80  →  0x00007ffff7b76b80  →  [loop detected]
+$r10   : 0x00007ffff7d83ca0  →  0x0000555555559b90  →  0x0000000000000000
+$r11   : 0x00007ffff7d83ca0  →  0x0000555555559b90  →  0x0000000000000000
+$r12   : 0x00005555555550b0  →  &lt;read_password+176&gt; xor ebp, ebp
+$r13   : 0x00007fffffffdb20  →  0x0000000000000001
+$r14   : 0x0               
+$r15   : 0x0               
+$eflags: [zero carry parity adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000 
+──────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffda08│+0x0000: 0x0000555555555393  →  &lt;deregister_tm_clones+40&gt; test eax, eax	 ← $rsp
+0x00007fffffffda10│+0x0008: 0x0000555555559b10  →  0x07150205020c130c
+0x00007fffffffda18│+0x0010: 0x0000555555559260  →  &quot;'..AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA[...]&quot;
+0x00007fffffffda20│+0x0018: 0x00007fffffffda40  →  0x0000555555555410  →  &lt;encrypt_password+0&gt; push r15	 ← $rbp
+0x00007fffffffda28│+0x0020: 0x0000555555555400  →  &lt;_start+67&gt; leave 
+0x00007fffffffda30│+0x0028: 0x0000555555559260  →  &quot;'..AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA[...]&quot;
+0x00007fffffffda38│+0x0030: 0x0000555555559b10  →  0x07150205020c130c
+0x00007fffffffda40│+0x0038: 0x0000555555555410  →  &lt;encrypt_password+0&gt; push r15
+────────────────────────────────────────────────────────── code:x86:64 ────
+   0x7ffff7d29ec0 &lt;__wcsnlen_avx2+832&gt; ja     0x7ffff7d29e85 &lt;__wcsnlen_avx2+773&gt;
+   0x7ffff7d29ec2                  nop    WORD PTR cs:[rax+rax*1+0x0]
+   0x7ffff7d29ecc                  nop    DWORD PTR [rax+0x0]
+ → 0x7ffff7d29ed0 &lt;__memcmp_sse4_1+0&gt; pxor   xmm0, xmm0
+   0x7ffff7d29ed4 &lt;__memcmp_sse4_1+4&gt; cmp    rdx, 0x4f
+   0x7ffff7d29ed8 &lt;__memcmp_sse4_1+8&gt; ja     0x7ffff7d29f10 &lt;__memcmp_sse4_1+64&gt;
+   0x7ffff7d29eda &lt;__memcmp_sse4_1+10&gt; cmp    rdx, 0x1
+   0x7ffff7d29ede &lt;__memcmp_sse4_1+14&gt; je     0x7ffff7d29f00 &lt;__memcmp_sse4_1+48&gt;
+   0x7ffff7d29ee0 &lt;__memcmp_sse4_1+16&gt; add    rsi, rdx
+──────────────────────────────────────────────────────────────── trace ────
+[#0] 0x7ffff7d29ed0 → __memcmp_sse4_1()
+[#1] 0x555555555393 → deregister_tm_clones()
+[#2] 0x555555555400 → _start()
+[#3] 0x7ffff7bc5b6b → __libc_start_main(main=0x5555555553bd &lt;_start&gt;, argc=0x1, argv=0x7fffffffdb28, init=&lt;optimized out&gt;, fini=&lt;optimized out&gt;, rtld_fini=&lt;optimized out&gt;, stack_end=0x7fffffffdb18)
+[#4] 0x5555555550da → read_password()
+───────────────────────────────────────────────────────────────────────────
+</code></pre>
+
+<p>Here we run the executable with gdb (with the <a href="https://github.com/hugsy/gef">gef</a> script).
+We set a breakpoint on <code>memcmp</code>, launch the program, enter some password (it&rsquo;s not important) and let the breakpoint trigger.</p>
+
+<p>Under the <a href="https://en.wikipedia.org/wiki/X86_calling_conventions#System_V_AMD64_ABI">System V AMD64 ABI</a> the second parameter is placed in the RSI register.
+So RSI contains the address of the xor-encrypted flag, and we can tell gdb to display it.</p>
+
+<pre><code>gef➤  x/50bx $rsi
+0x555555559b10:	0x0c	0x13	0x0c	0x02	0x05	0x02	0x15	0x07
+0x555555559b18:	0x3a	0x25	0x2e	0x2f	0x35	0x1e	0x2d	0x24
+0x555555559b20:	0x35	0x1e	0x35	0x29	0x24	0x1e	0x36	0x33
+0x555555559b28:	0x2e	0x2f	0x26	0x1e	0x2d	0x20	0x23	0x2d
+0x555555559b30:	0x24	0x32	0x1e	0x27	0x2e	0x2e	0x2d	0x1e
+0x555555559b38:	0x38	0x2e	0x34	0x3c	0x41	0x00	0x00	0x00
+0x555555559b40:	0x00	0x00
+gef➤ 
+</code></pre>
+
+<p>Xor&rsquo;ing every singe byte with 0x41 to get the plaintext flag is left as an exercise to the reader.</p>
+<ul class="pa0">
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/mrmcdctf2019" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">MRMCDCTF2019</a>
+   </li>
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/ctf" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">CTF</a>
+   </li>
+  
+</ul>
+<div class="mt6">
+        
+      </div>
+    </section>
+
+    <aside class="w-30-l mt6-l">
+
+
+
+
+  <div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">Related</p>
+    <ul class="pa0 list">
+	   
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/">MRMCDCTF2019: Cereal</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-hopping_machine/">MRMCDCTF2019: Hopping machine</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-slicer/">MRMCDCTF2019: Slicer</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-sitting_duck/">MRMCDCTF2019: Sitting duck</a>
+        </li>
+	    
+    </ul>
+</div>
+
+</aside>
+
+  </article>
+
+    </main>
+    <footer class="bg-navy bottom-0 w-100 pa3" role="contentinfo">
+  <div class="flex justify-between">
+  <a class="f4 fw4 hover-white no-underline white-70 dn dib-ns pv2 ph3" href="https://schlafwandler.github.io" >
+    &copy; 2019 Pointers to the void
+  </a>
+    <div>
+
+
+
+
+
+
+
+
+
+
+</div>
+  </div>
+</footer>
+
+    
+
+  <script src="https://schlafwandler.github.io/dist/js/app.3fc0f988d21662902933.js"></script>
+
+
+  </body>
+</html>
