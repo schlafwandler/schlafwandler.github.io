@@ -6,10 +6,21 @@
     <description>Recent content in It Security on Pointers to the void</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 26 Sep 2019 23:38:04 +0200</lastBuildDate>
+    <lastBuildDate>Mon, 30 Sep 2019 22:13:27 +0200</lastBuildDate>
     
 	<atom:link href="https://schlafwandler.github.io/categories/it-security/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>MRMCDCTF2019: KonradVC</title>
+      <link>https://schlafwandler.github.io/posts/mrmcdctf2019-konradvc/</link>
+      <pubDate>Mon, 30 Sep 2019 22:13:27 +0200</pubDate>
+      
+      <guid>https://schlafwandler.github.io/posts/mrmcdctf2019-konradvc/</guid>
+      <description>Solution to KonradVC (medium - hard) from MRMCDCTF 2019 KonradVC is the second Windows challenge I wrote for the 2019 MRMCDCTF. Even though it&amp;rsquo;s a Windows challenge, it runs fine under Wine.
+KonradVC was intended to be harder than Slicer, the other Windows challenge. It employs a very simple crypter to make analysis of the actual challenge code more difficult.
+When loading it in Ghidra, the first thing we notice is that there seem to be only two functions: entry and FUN_00406039.</description>
+    </item>
     
     <item>
       <title>MRMCDCTF2019: Misguided</title>

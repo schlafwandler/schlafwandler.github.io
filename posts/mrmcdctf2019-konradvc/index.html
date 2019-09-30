@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    
+    <title>Pointers to the void  | MRMCDCTF2019: KonradVC</title>
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+
+    <meta name="viewport" content="width=device-width,minimum-scale=1">
+    <meta name="generator" content="Hugo 0.52" />
+    
+    
+      <META NAME="ROBOTS" CONTENT="INDEX, FOLLOW">
+    
+
+    
+    
+      <link href="https://schlafwandler.github.io/dist/css/app.d98f2eb6bcd1eaedb7edf166bd16af26.css" rel="stylesheet">
+    
+
+    
+
+    
+      
+    
+
+    <meta content="CTF, capture the flag, windows, binary, crypter, packer, protector, reversing, x86dbg" name="keywords">
+    <meta content=" - " property="og:description">
+
+    
+
+    <meta property="og:title" content="MRMCDCTF2019: KonradVC" />
+<meta property="og:description" content="Solution to KonradVC (medium - hard) from MRMCDCTF 2019 KonradVC is the second Windows challenge I wrote for the 2019 MRMCDCTF. Even though it&rsquo;s a Windows challenge, it runs fine under Wine.
+KonradVC was intended to be harder than Slicer, the other Windows challenge. It employs a very simple crypter to make analysis of the actual challenge code more difficult.
+When loading it in Ghidra, the first thing we notice is that there seem to be only two functions: entry and FUN_00406039." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://schlafwandler.github.io/posts/mrmcdctf2019-konradvc/" /><meta property="article:published_time" content="2019-09-30T22:13:27&#43;02:00"/>
+<meta property="article:modified_time" content="2019-09-30T22:13:27&#43;02:00"/>
+
+
+<meta itemprop="name" content="MRMCDCTF2019: KonradVC">
+<meta itemprop="description" content="Solution to KonradVC (medium - hard) from MRMCDCTF 2019 KonradVC is the second Windows challenge I wrote for the 2019 MRMCDCTF. Even though it&rsquo;s a Windows challenge, it runs fine under Wine.
+KonradVC was intended to be harder than Slicer, the other Windows challenge. It employs a very simple crypter to make analysis of the actual challenge code more difficult.
+When loading it in Ghidra, the first thing we notice is that there seem to be only two functions: entry and FUN_00406039.">
+
+
+<meta itemprop="datePublished" content="2019-09-30T22:13:27&#43;02:00" />
+<meta itemprop="dateModified" content="2019-09-30T22:13:27&#43;02:00" />
+<meta itemprop="wordCount" content="1346">
+
+
+
+<meta itemprop="keywords" content="MRMCDCTF2019,CTF," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="MRMCDCTF2019: KonradVC"/>
+<meta name="twitter:description" content="Solution to KonradVC (medium - hard) from MRMCDCTF 2019 KonradVC is the second Windows challenge I wrote for the 2019 MRMCDCTF. Even though it&rsquo;s a Windows challenge, it runs fine under Wine.
+KonradVC was intended to be harder than Slicer, the other Windows challenge. It employs a very simple crypter to make analysis of the actual challenge code more difficult.
+When loading it in Ghidra, the first thing we notice is that there seem to be only two functions: entry and FUN_00406039."/>
+
+      
+    
+  </head>
+
+  <body class="ma0 avenir bg-near-white">
+
+    
+   
+  
+
+  <header>
+    <div class="bg-navy">
+      <nav class="pv3 ph3 ph4-ns" role="navigation">
+  <div class="flex-l justify-between items-center center">
+    <a href="https://schlafwandler.github.io" class="f3 fw2 hover-white no-underline white-90 dib">
+      Pointers to the void
+    </a>
+    <div class="flex-l items-center">
+      
+
+      
+        <ul class="pl0 mr3">
+          
+          <li class="list f5 f4-ns fw4 dib pr3">
+            <a class="hover-white no-underline white-90" href="https://schlafwandler.github.io/tags/" title=" page">
+              
+            </a>
+          </li>
+          
+        </ul>
+      
+      
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+  </div>
+</nav>
+
+    </div>
+  </header>
+
+
+
+    <main class="pb7" role="main">
+      
+  
+  <article class="flex-l flex-wrap justify-between mw8 center ph3">
+
+    <header class="mt4 w-100">
+      <p class="f6 b helvetica tracked">
+          
+        POSTS
+      </p>
+      <h1 class="f1 athelas mb1">MRMCDCTF2019: KonradVC</h1>
+      
+      <time class="f6 mv4 dib tracked" datetime="2019-09-30T22:13:27&#43;02:00">September 30, 2019</time>      
+      
+      
+    </header>
+
+    <section class="nested-copy-line-height lh-copy serif f4 nested-links nested-img mid-gray pr4-l w-two-thirds-l">
+
+<h2 id="solution-to-konradvc-medium-hard-from-mrmcdctf-2019">Solution to KonradVC (medium - hard) from MRMCDCTF 2019</h2>
+
+<p><a href="https://github.com/schlafwandler/CTF-challenges/tree/master/MRMCDCTF-2019/reversing/KonradVC">KonradVC</a> is the second Windows challenge I wrote for the 2019 MRMCDCTF.
+Even though it&rsquo;s a Windows challenge, it runs fine under Wine.</p>
+
+<p>KonradVC was intended to be harder than <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-slicer/">Slicer</a>, the other Windows challenge.
+It employs a very simple crypter to make analysis of the actual challenge code more difficult.</p>
+
+<p>When loading it in Ghidra, the first thing we notice is that there seem to be only two functions: <code>entry</code> and <code>FUN_00406039</code>.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-KonradVC-ghidra-1.png" alt="Ghidra screenshot" />
+And with both functions it&rsquo;s quite clear that the decompiler has problems making sense out of them.</p>
+
+<p>The memory map (Window-&gt;Memory Map) shows two other interesting things:
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-KonradVC-ghidra-mm.png" alt="Ghidra memory map screenshot" />
+First, there is a section named <code>.ntext</code> in the binary that is not present in normal, compiler generated binaries.
+And both functions recognised by Ghidra are in this strange section.</p>
+
+<p>Second, the the <code>.text</code> section has read/write/execute permissions.
+This is most unusual, since memory with such permissions is basically every exploit writers best friend.
+No compiler from this decade should produce a binary with these permissions.</p>
+
+<p>Here is the executable again, this time in <a href="https://hshrzd.wordpress.com/pe-bear/">PE-bear</a>, a tool specially for analysing PE files.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-KonradVC-PEbear.png" alt="PE-bear screenshot" />
+The red line in the lower section marks the file&rsquo;s entry point, the position in the executable were execution starts.
+In this view it&rsquo;s quite obvious that there was an additional section appended to the file, that now gets executed first.</p>
+
+<p>If you wish you can also further explore the <code>.text</code> and <code>.data</code> sections, but you will not find anything useful there:
+these sections only contain garbage.</p>
+
+<p>That all should give you enough indication that this file is protected by some sort of crypter or protector.</p>
+
+<p>The simplest design of these encrypts various parts of the main executable.
+Than it adds some special code to the file and makes sure that this code gets executed at first (before the now encrypted original code).
+This piece of code (often called a decryptor stub) then decrypts the original executable in memory,
+before jumping to the original entry point (OEP) of the original executable.
+The original code (now in plain text) then executes normally.</p>
+
+<p>There are several ways to defeat such crypters:</p>
+
+<p>One way is to analyse and understand the decryption stub.
+By doing so, you learn how it decrypts the file, which parts of the file are decrypted and where the keys are stored or generated.
+With this knowledge, you can create your own decrypter, to decrypt the interesting portions of the file yourself.</p>
+
+<p>Another approach  is to simply let decryptor stub to its work, and then acquire the plain executable from memory.
+I will concentrate on this way here.</p>
+
+<p>For this approach we need a way to get control of the process (via a debugger) after the stub has completed its work.
+A debugger is a tool to control, examine and manipulate a running program.
+As a Windows debugger I will here use <a href="https://x64dbg.com/">x64dbg</a>.
+A complete tutorial (or even an introduction) to its usage would go way beyond the scope of this text, but you can find its documentation <a href="http://help.x64dbg.com/en/latest/">here</a>.</p>
+
+<p>The &ldquo;let the decrypter run and take control&rdquo; approach can be executed in many ways:</p>
+
+<ul>
+<li><p>You can run the program in the debugger and wait for the password prompt, then interrupt it (&lsquo;F12&rsquo;).
+The process will stop somewhere in <code>kernel32.dll</code>.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-KonradVC-x86dbg-stopinkerneldll.png" alt="x86dbg stopped in kernel32.dll" />
+In the memory view you can then select the executable and examine its <code>.text</code> or <code>.data</code> sections.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-KonradVC-x86dbg-memoryview.png" alt="x86dbg memory view" /></p></li>
+
+<li><p>You can run the program (without a debugger), and attach the debugger while it waits for the password.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-KonradVC-x86dbg-attach.png" alt="x86dbg attaching" />
+This will stop the process in a different part of <code>kernel32.dll</code>, but you can navigate with the memory view just as seen above.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-KonradVC-x86dbg-kernel32dll-attached.png" alt="x86dbg after attaching" /></p></li>
+
+<li><p>You can locate the <code>jmp</code> (or <code>call</code>, or even <code>ret</code>) in the decryption stub that transfers control to the original entry point.
+This can require some digging through the stub&rsquo;s code, but here the <code>jmp ebx</code> seems like a hot candidate.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-KonradVC-x86dbg-oep.png" alt="x86dbg with jmp to OEP" />
+Especially in the graph view (&lsquo;G&rsquo;) the <code>jmp ebx</code> (lower left branch) sticks out:
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-KonradVC-x86dbg-oep-graph.png" alt="x86dbg with jmp to OEP (graph)" />
+You can set a breakpoint there and examine the memory once it hits.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-KonradVC-x86dbg-break-jmp-oep.png" alt="x86dbg breaking at jmp OEP" /></p></li>
+</ul>
+
+<p>There are many more methods possible, but one way or the other you will end up with the (now decrypted) <code>.text</code> section.
+And there is some interesting code right at its start.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-KonradVC-x86dbg-textsection.png" alt="x86dbg .text section" /></p>
+
+<pre><code>00401000 | 55                       | push ebp                                |
+00401001 | 8BEC                     | mov ebp,esp                             |
+00401003 | 81EC 04040000            | sub esp,404                             |
+00401009 | A1 00304000              | mov eax,dword ptr ds:[403000]           |
+0040100E | 33C5                     | xor eax,ebp                             |
+00401010 | 8945 FC                  | mov dword ptr ss:[ebp-4],eax            |
+00401013 | 56                       | push esi                                |
+00401014 | 68 00040000              | push 400                                |
+00401019 | 8D85 FCFBFFFF            | lea eax,dword ptr ss:[ebp-404]          |
+0040101F | 6A 00                    | push 0                                  |
+00401021 | 50                       | push eax                                |
+00401022 | E8 DD080000              | call &lt;JMP.&amp;memset&gt;                      |
+00401027 | 8B35 98204000            | mov esi,dword ptr ds:[&lt;&amp;printf&gt;]        |
+0040102D | 68 E0304000              | push konrad.4030E0                      | 4030E0:&quot;The password is the flag. What is the password?\n&quot;
+00401032 | FFD6                     | call esi                                |
+00401034 | 8D85 FCFBFFFF            | lea eax,dword ptr ss:[ebp-404]          |
+0040103A | 68 00040000              | push 400                                |
+0040103F | 50                       | push eax                                |
+00401040 | FF15 90204000            | call dword ptr ds:[&lt;&amp;gets_s&gt;]           |
+00401046 | 83C4 18                  | add esp,18                              |
+00401049 | 81BD FCFBFFFF 4D524D43   | cmp dword ptr ss:[ebp-404],434D524D     |
+00401053 | 75 4F                    | jne konrad.4010A4                       |
+00401055 | 81BD 00FCFFFF 44435446   | cmp dword ptr ss:[ebp-400],46544344     |
+0040105F | 75 43                    | jne konrad.4010A4                       |
+00401061 | 81BD 04FCFFFF 7B66696E   | cmp dword ptr ss:[ebp-3FC],6E69667B     |
+0040106B | 75 37                    | jne konrad.4010A4                       |
+0040106D | 81BD 08FCFFFF 616C6C79   | cmp dword ptr ss:[ebp-3F8],796C6C61     |
+00401077 | 75 2B                    | jne konrad.4010A4                       |
+00401079 | 81BD 0CFCFFFF 5F686572   | cmp dword ptr ss:[ebp-3F4],7265685F     |
+00401083 | 75 1F                    | jne konrad.4010A4                       |
+00401085 | 81BD 10FCFFFF 655F695F   | cmp dword ptr ss:[ebp-3F0],5F695F65     |
+0040108F | 75 13                    | jne konrad.4010A4                       |
+00401091 | 81BD 14FCFFFF 616D7D00   | cmp dword ptr ss:[ebp-3EC],7D6D61       |
+0040109B | 75 07                    | jne konrad.4010A4                       |
+0040109D | 68 50304000              | push konrad.403050                      | 403050:&quot;\n##############################################\n###   Congratulations! This is the flag!   ###\n##############################################\n\n&quot;
+004010A2 | EB 05                    | jmp konrad.4010A9                       |
+004010A4 | 68 38304000              | push konrad.403038                      | 403038:&quot;Wrong. Try again.\n&quot;
+004010A9 | FFD6                     | call esi                                |
+004010AB | 83C4 04                  | add esp,4                               |
+004010AE | 68 18304000              | push konrad.403018                      | 403018:&quot;&lt;press any key to continue&gt;\n&quot;
+004010B3 | FFD6                     | call esi                                |
+004010B5 | 83C4 04                  | add esp,4                               |
+004010B8 | FF15 8C204000            | call dword ptr ds:[&lt;&amp;getchar&gt;]          |
+004010BE | 8B4D FC                  | mov ecx,dword ptr ss:[ebp-4]            |
+004010C1 | 33CD                     | xor ecx,ebp                             |
+004010C3 | 33C0                     | xor eax,eax                             |
+004010C5 | 5E                       | pop esi                                 |
+004010C6 | E8 04000000              | call konrad.4010CF                      |
+004010CB | 8BE5                     | mov esp,ebp                             |
+004010CD | 5D                       | pop ebp                                 |
+004010CE | C3                       | ret                                     |
+</code></pre>
+
+<p>The &ldquo;What is the password?&rdquo; is printed at <code>00401032</code>, then the password is read into the local variable <code>[ebp-404]</code> at <code>00401040</code> via <code>gets_s</code>.</p>
+
+<p>After that there are a lot of compares, starting at <code>00401049</code>.
+Each one of them compares a different part of the input (saved at <code>[ebp-404]</code>) with a with static value.
+And if one of these turns out <code>not equal</code> (ne), the code jumps to <code>004010A4</code> - where the &ldquo;Wrong. Try again.&rdquo; gets printed.</p>
+
+<p>So <code>0040109D</code>, where the &ldquo;Congratulations&rdquo; string gets pushed (and later printed), will only be reached if all the values match -
+and this will only happen if the input, represented as 32-bit integers, is <code>434D524D 46544344 6E69667B 796C6C61 7265685F 5F695F65 007D6D61</code>.</p>
+
+<p>When translating these numbers into a string take care of the <a href="https://en.wikipedia.org/wiki/Endianness#Little-endian">Endianness</a>:
+The lowest value byte of a integer stands at the lowest address in memory (&ldquo;comes first&rdquo;),
+so the byte order must be reversed to transform the numbers above into a string.</p>
+
+<p>When taking this into account, the password/flag (as a hexstring) must be</p>
+
+<pre><code>4d524d43444354467b66696e616c6c795f686572655f695f616d7d00
+</code></pre>
+
+<p>All that&rsquo;s left for you to do is print this as ASCII.</p>
+<ul class="pa0">
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/mrmcdctf2019" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">MRMCDCTF2019</a>
+   </li>
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/ctf" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">CTF</a>
+   </li>
+  
+</ul>
+<div class="mt6">
+        
+      </div>
+    </section>
+
+    <aside class="w-30-l mt6-l">
+
+
+
+
+  <div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">Related</p>
+    <ul class="pa0 list">
+	   
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-misguided/">MRMCDCTF2019: Misguided</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-slicer/">MRMCDCTF2019: Slicer</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-hopping_machine/">MRMCDCTF2019: Hopping machine</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/">MRMCDCTF2019: Cereal</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-sitting_duck/">MRMCDCTF2019: Sitting duck</a>
+        </li>
+	    
+    </ul>
+</div>
+
+</aside>
+
+  </article>
+
+    </main>
+    <footer class="bg-navy bottom-0 w-100 pa3" role="contentinfo">
+  <div class="flex justify-between">
+  <a class="f4 fw4 hover-white no-underline white-70 dn dib-ns pv2 ph3" href="https://schlafwandler.github.io" >
+    &copy; 2019 Pointers to the void
+  </a>
+    <div>
+
+
+
+
+
+
+
+
+
+
+</div>
+  </div>
+</footer>
+
+    
+
+  <script src="https://schlafwandler.github.io/dist/js/app.3fc0f988d21662902933.js"></script>
+
+
+  </body>
+</html>
