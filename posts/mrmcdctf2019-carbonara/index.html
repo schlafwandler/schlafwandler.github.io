@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    
+    <title>Pointers to the void  | MRMCDCTF2019: Carbonara</title>
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+
+    <meta name="viewport" content="width=device-width,minimum-scale=1">
+    <meta name="generator" content="Hugo 0.52" />
+    
+    
+      <META NAME="ROBOTS" CONTENT="INDEX, FOLLOW">
+    
+
+    
+    
+      <link href="https://schlafwandler.github.io/dist/css/app.d98f2eb6bcd1eaedb7edf166bd16af26.css" rel="stylesheet">
+    
+
+    
+
+    
+      
+    
+
+    <meta content="CTF, capture the flag, linux, binary, gdb, gef, ghidra, reversing" name="keywords">
+    <meta content=" - " property="og:description">
+
+    
+
+    <meta property="og:title" content="MRMCDCTF2019: Carbonara" />
+<meta property="og:description" content="Solution to Carbonara (medium - hard) from MRMCDCTF 2019 Carbonara is another one of my challenges for MRMCDCTF 2019. Just like KonradVC, it employs an anti-reversing trick, but of a completely different kind: the code is chopped into small pieces, each one instruction long. These pieces are saved in random order, and connected by jmps. The resulting code executes the instructions in the right order, but looks like a total mess." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://schlafwandler.github.io/posts/mrmcdctf2019-carbonara/" /><meta property="article:published_time" content="2019-10-10T00:18:06&#43;02:00"/>
+<meta property="article:modified_time" content="2019-10-10T00:18:06&#43;02:00"/>
+
+
+<meta itemprop="name" content="MRMCDCTF2019: Carbonara">
+<meta itemprop="description" content="Solution to Carbonara (medium - hard) from MRMCDCTF 2019 Carbonara is another one of my challenges for MRMCDCTF 2019. Just like KonradVC, it employs an anti-reversing trick, but of a completely different kind: the code is chopped into small pieces, each one instruction long. These pieces are saved in random order, and connected by jmps. The resulting code executes the instructions in the right order, but looks like a total mess.">
+
+
+<meta itemprop="datePublished" content="2019-10-10T00:18:06&#43;02:00" />
+<meta itemprop="dateModified" content="2019-10-10T00:18:06&#43;02:00" />
+<meta itemprop="wordCount" content="2619">
+
+
+
+<meta itemprop="keywords" content="MRMCDCTF2019,CTF," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="MRMCDCTF2019: Carbonara"/>
+<meta name="twitter:description" content="Solution to Carbonara (medium - hard) from MRMCDCTF 2019 Carbonara is another one of my challenges for MRMCDCTF 2019. Just like KonradVC, it employs an anti-reversing trick, but of a completely different kind: the code is chopped into small pieces, each one instruction long. These pieces are saved in random order, and connected by jmps. The resulting code executes the instructions in the right order, but looks like a total mess."/>
+
+      
+    
+  </head>
+
+  <body class="ma0 avenir bg-near-white">
+
+    
+   
+  
+
+  <header>
+    <div class="bg-navy">
+      <nav class="pv3 ph3 ph4-ns" role="navigation">
+  <div class="flex-l justify-between items-center center">
+    <a href="https://schlafwandler.github.io" class="f3 fw2 hover-white no-underline white-90 dib">
+      Pointers to the void
+    </a>
+    <div class="flex-l items-center">
+      
+
+      
+        <ul class="pl0 mr3">
+          
+          <li class="list f5 f4-ns fw4 dib pr3">
+            <a class="hover-white no-underline white-90" href="https://schlafwandler.github.io/tags/" title=" page">
+              
+            </a>
+          </li>
+          
+        </ul>
+      
+      
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+  </div>
+</nav>
+
+    </div>
+  </header>
+
+
+
+    <main class="pb7" role="main">
+      
+  
+  <article class="flex-l flex-wrap justify-between mw8 center ph3">
+
+    <header class="mt4 w-100">
+      <p class="f6 b helvetica tracked">
+          
+        POSTS
+      </p>
+      <h1 class="f1 athelas mb1">MRMCDCTF2019: Carbonara</h1>
+      
+      <time class="f6 mv4 dib tracked" datetime="2019-10-10T00:18:06&#43;02:00">October 10, 2019</time>      
+      
+      
+    </header>
+
+    <section class="nested-copy-line-height lh-copy serif f4 nested-links nested-img mid-gray pr4-l w-two-thirds-l">
+
+<h2 id="solution-to-carbonara-medium-hard-from-mrmcdctf-2019">Solution to Carbonara (medium - hard) from MRMCDCTF 2019</h2>
+
+<p><a href="https://github.com/schlafwandler/CTF-challenges/tree/master/MRMCDCTF-2019/reversing/Carbonara">Carbonara</a> is another one of my challenges for MRMCDCTF 2019.
+Just like <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-konradvc/">KonradVC</a>, it employs an anti-reversing trick,
+but of a completely different kind:
+the code is chopped into small pieces, each one instruction long.
+These pieces are saved in random order, and connected by <code>jmp</code>s.
+The resulting code executes the instructions in the right order, but looks like a total mess.</p>
+
+<h3 id="the-challenge">The challenge</h3>
+
+<p>When you try to decompile <code>main</code> with Ghidra, you get something like this:</p>
+
+<pre><code>void main(char *pcParm1,undefined *puParm2,ulong uParm3)
+{
+  byte bVar1;
+  code *pcVar2;
+  uint uVar3;
+  undefined8 *in_RAX;
+  ulong uVar4;
+  char *pcVar5;
+  uint uVar6;
+  ulong extraout_RDX;
+  ulong extraout_RDX_00;
+  ulong extraout_RDX_01;
+[ some more variables ]
+  
+  puVar9 = (undefined8 *)&amp;stack0xfffffffffffffff8;
+  if ((!in_CF) &amp;&amp;
+     (puVar9 = (undefined8 *)&amp;stack0xfffffffffffffff8, puVar8 = &amp;stack0xfffffffffffffff8, in_CF))
+  goto LAB_005031e5;
+LAB_00503204:
+  unaff_RBP = puVar9;
+  if (!in_PF) goto LAB_00503259;
+  unaff_RBP = puVar9;
+  if (in_PF) goto LAB_00503259;
+  do {
+    *(undefined *)((long)unaff_RBP + -1) = 0;
+    if (in_CF) goto LAB_005032c9;
+    if (!in_CF) goto LAB_005032c9;
+LAB_0050321b:
+    in_RAX = (undefined8 *)(uParm3 &amp; 0xffffffff);
+    if ((!in_PF) || (in_PF)) {
+LAB_0050301e:
+      *(byte *)((long)unaff_RBP + -1) = *(byte *)((long)unaff_RBP + -1) | (byte)in_RAX;
+      __s = unaff_RBP + -1;
+      in_CF = 0xfffffffe &lt; *(uint *)__s;
+      in_OF = SCARRY4(*(uint *)__s,1);
+      *(uint *)__s = *(uint *)__s + 1;
+      in_ZF = *(uint *)__s == 0;
+      if (in_CF) goto LAB_00503132;
+      if (!in_CF) goto LAB_00503132;
+      goto LAB_0050302e;
+    }
+[ a lot more of this ]
+</code></pre>
+
+<p>It&rsquo;s obvious something is not right here.</p>
+
+<p>The disassembler shows how the decompiler got confused:</p>
+
+<pre><code>                             **************************************************************
+                             *                          FUNCTION                          *
+                             **************************************************************
+                             undefined FUN_005031e0()
+             undefined         AL:1           &lt;RETURN&gt;
+             undefined1        Stack[-0x9]:1  local_9                                 XREF[1]:     0050320b(W)  
+                             FUN_005031e0                                    XREF[1]:     thunk_FUN_005031e0:00503000(T), 
+                                                                                          thunk_FUN_005031e0:00503000(j)  
+        005031e0       PUSH       RBP
+        005031e1       JC         LAB_00503204
+        005031e3       JNC        LAB_00503204
+                             LAB_005031e5                                    XREF[1]:     005031d1(j)  
+        005031e5       LEA        RSI,[DAT_00101948]                               = 0Ah
+        005031ec       JNO        LAB_00503233
+        005031ee       JO         LAB_00503233
+                             LAB_005031f0                                    XREF[2]:     00503273(j), 00503279(j)  
+        005031f0       MOV        EAX,dword ptr [RBP + -0x8]
+        005031f3       JMP        LAB_0050309a
+                             LAB_005031f8                                    XREF[2]:     00503006(j), 0050300c(j)  
+        005031f8       RET
+        005031f9       ??         E9h
+        005031fa       ??         5Ch    \
+        005031fb       ??         FEh
+        005031fc       ??         FFh
+        005031fd       ??         FFh
+                             LAB_005031fe                                    XREF[2]:     00503062(j), 00503068(j)  
+        005031fe       MOV        EDX,EAX
+        00503200       JNP        LAB_0050327f
+        00503202       JP         LAB_0050327f
+                             LAB_00503204                                    XREF[2]:     005031e1(j), 005031e3(j)  
+        00503204       MOV        RBP,RSP
+        00503207       JNP        LAB_00503259
+        00503209       JP         LAB_00503259
+                             LAB_0050320b                                    XREF[1]:     00503019(j)  
+        0050320b       MOV        byte ptr [RBP + local_9],0x0
+        0050320f       JC         LAB_005032c9
+        00503215       JNC        LAB_005032c9
+                             LAB_0050321b                                    XREF[2]:     00503155(j), 0050315b(j)  
+        0050321b       MOV        EAX,EDX
+        0050321d       JNP        LAB_0050306e
+        00503223       JP         LAB_0050306e
+
+[ a lot more of this ]
+</code></pre>
+
+<p><img src="https://schlafwandler.github.io/img/mrmcdctf2019-carbonara-ghidra-function-graph.png" alt="Ghidra function graph" />
+You can see the pattern here:
+there is always one instruction that does something, followed by two jumps: one conditional jump, and one other conditional jump for the exactly opposite condition.
+So one of these jumps always gets followed, no matter what.
+And they both always lead to the same destination anyway.</p>
+
+<p>So these jumps do not actually do anything:
+they just make the control flow jump around without ever doing anything meaningful.
+And, of course, they make the disassembly painful to read and confuse the decompiler.</p>
+
+<h3 id="the-solution">The solution</h3>
+
+<p>Actually, this challenge can be solved in two ways: one intended, and one painful:</p>
+
+<h4 id="solution-1-the-intended-one">Solution 1: The intended one</h4>
+
+<p>It&rsquo;s difficult to follow the code around.
+But maybe it&rsquo;s easier to follow the data (in our case: the password/flag)?</p>
+
+<p>The password gets read with <code>fgets</code>:</p>
+
+<pre><code>user@host:$ ltrace ./carbonara 
+puts(&quot;The password is the flag. What i&quot;...The password is the flag. What is the password?
+)  = 48
+fgets(foo
+&quot;foo\n&quot;, 128, 0x7f6eb80bba00)          = 0x7ffd6b3b2050
+strtok(&quot;foo\n&quot;, &quot;\n&quot;)                        = &quot;foo&quot;
+strlen(&quot;foo&quot;)                                = 3
+puts(&quot;Wrong. Try again.&quot;Wrong. Try again.
+)                    = 18
++++ exited (status 255) +++
+</code></pre>
+
+<p>So we can set a breakpoint at <code>fgets</code>, let the function finish, but set a <a href="https://sourceware.org/gdb/onlinedocs/gdb/Set-Watchpoints.html">watchpoint</a>
+(gdb&rsquo;s term for a memory breakpoint) on the buffer where the password is set.
+Then the program will be interrupted at any further access to that buffer.</p>
+
+<pre><code>user@host:$ gdb ./carbonara 
+GNU gdb (Ubuntu 8.2.91.20190405-0ubuntu3) 8.2.91.20190405-git
+[...]
+(No debugging symbols found in ./carbonara)
+gef➤  b fgets
+Haltepunkt 1 at 0x1620
+gef➤  r
+Starting program: /media/truecrypt1/ctf/2019_mrmcd/MRMCD2019/reversing/carbonara/downloads/carbonara 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library &quot;/lib/x86_64-linux-gnu/libthread_db.so.1&quot;.
+The password is the flag. What is the password?
+
+Breakpoint 1, _IO_fgets (buf=0x7fffffffd990 &quot;z\357\377\377\377\177&quot;, n=0x80, fp=0x7ffff7d83a00 &lt;_IO_2_1_stdin_&gt;) at iofgets.c:37
+37	iofgets.c: Datei oder Verzeichnis nicht gefunden.
+__main__:2274: DeprecationWarning: invalid escape sequence '\ç'
+[ Legend: Modified register | Code | Heap | Stack | String ]
+──────────────────────────────────────────────────────────── registers ────
+$rax   : 0x00007fffffffd990  →  0x00007fffffffef7a  →  &quot;/home/justus/MRMCD2019/reversing/carbonara&quot;
+$rbx   : 0x0               
+$rcx   : 0x00007ffff7cac024  →  0x5477fffff0003d48 (&quot;H=&quot;?)
+$rdx   : 0x00007ffff7d83a00  →  0x00000000fbad2088
+$rsp   : 0x00007fffffffd958  →  0x00005555559571c1  →   je 0x5555559571ca
+$rbp   : 0x00007fffffffda20  →  0x0000555555555890  →  &lt;__libc_csu_init+0&gt; push r15
+$rsi   : 0x80              
+$rdi   : 0x00007fffffffd990  →  0x00007fffffffef7a  →  &quot;/home/justus/MRMCD2019/reversing/carbonara&quot;
+$rip   : 0x00007ffff7c21100  →  &lt;fgets+0&gt; test esi, esi
+$r8    : 0x0               
+$r9    : 0x5d              
+$r10   : 0x00007ffff7d83ca0  →  0x0000555555958660  →  0x0000000000000000
+$r11   : 0x246             
+$r12   : 0x0000555555555650  →  &lt;_start+0&gt; xor ebp, ebp
+$r13   : 0x00007fffffffdb00  →  0x0000000000000001
+$r14   : 0x0               
+$r15   : 0x0               
+$eflags: [ZERO carry PARITY adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000 
+──────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffd958│+0x0000: 0x00005555559571c1  →   je 0x5555559571ca	 ← $rsp
+0x00007fffffffd960│+0x0008: 0x88968586858f948f
+0x00007fffffffd968│+0x0010: 0xb6a7aaa9a3b2b5bd
+0x00007fffffffd970│+0x0018: 0xa1a7a6b1a5a1abb6
+0x00007fffffffd978│+0x0020: 0xa3a7b4a4a1b4b1a8
+0x00007fffffffd980│+0x0028: 0x0042bfb6b5a3a8ad
+0x00007fffffffd988│+0x0030: 0x00007ffff7b7fbfb  →  &lt;__pthread_initialize_minimal+875&gt; mov rax, QWORD PTR [rsp+0xc8]
+0x00007fffffffd990│+0x0038: 0x00007fffffffef7a  →  &quot;/home/justus/MRMCD2019/reversing/carbonara&quot;	 ← $rax, $rdi
+────────────────────────────────────────────────────────── code:x86:64 ────
+   0x7ffff7c210f4 &lt;fgetpos64+388&gt;  mov    rsi, rax
+   0x7ffff7c210f7 &lt;fgetpos64+391&gt;  jmp    0x7ffff7bc46f8 &lt;_IO_new_fgetpos+4294588296&gt;
+   0x7ffff7c210fc                  nop    DWORD PTR [rax+0x0]
+ → 0x7ffff7c21100 &lt;fgets+0&gt;        test   esi, esi
+   0x7ffff7c21102 &lt;fgets+2&gt;        jle    0x7ffff7c21240 &lt;_IO_fgets+320&gt;
+   0x7ffff7c21108 &lt;fgets+8&gt;        push   r12
+   0x7ffff7c2110a &lt;fgets+10&gt;       mov    r8d, esi
+   0x7ffff7c2110d &lt;fgets+13&gt;       mov    r12, rdi
+   0x7ffff7c21110 &lt;fgets+16&gt;       push   rbp
+──────────────────────────────────────────────────────────────── trace ────
+[#0] 0x7ffff7c21100 → _IO_fgets(buf=0x7fffffffd990 &quot;z\357\377\377\377\177&quot;, n=0x80, fp=0x7ffff7d83a00 &lt;_IO_2_1_stdin_&gt;)
+[#1] 0x5555559571c1 → je 0x5555559571ca
+───────────────────────────────────────────────────────────────────────────
+gef➤  fin
+Run till exit from #0  _IO_fgets (buf=0x7fffffffd990 &quot;z\357\377\377\377\177&quot;, n=0x80, fp=0x7ffff7d83a00 &lt;_IO_2_1_stdin_&gt;) at iofgets.c:37
+foo
+0x00005555559571c1 in ?? ()
+Value returned is $1 = 0x7fffffffd990 &quot;foo\n&quot;
+[ Legend: Modified register | Code | Heap | Stack | String ]
+──────────────────────────────────────────────────────────── registers ────
+$rax   : 0x00007fffffffd990  →  0x00007f000a6f6f66 (&quot;foo&quot;?)
+$rbx   : 0x0               
+$rcx   : 0xfbad2288        
+$rdx   : 0x00007fffffffd990  →  0x00007f000a6f6f66 (&quot;foo&quot;?)
+$rsp   : 0x00007fffffffd960  →  0x88968586858f948f
+$rbp   : 0x00007fffffffda20  →  0x0000555555555890  →  &lt;__libc_csu_init+0&gt; push r15
+$rsi   : 0x00007ffff7d86590  →  0x0000000000000000
+$rdi   : 0x00007fffffffd991  →  0x7000007f000a6f6f (&quot;oo&quot;?)
+$rip   : 0x00005555559571c1  →   je 0x5555559571ca
+$r8    : 0x0000555555958674  →  0x0000000000000000
+$r9    : 0x00007ffff7b76b80  →  0x00007ffff7b76b80  →  [loop detected]
+$r10   : 0x00007ffff7d83ca0  →  0x0000555555958a70  →  0x0000000000000000
+$r11   : 0x246             
+$r12   : 0x0000555555555650  →  &lt;_start+0&gt; xor ebp, ebp
+$r13   : 0x00007fffffffdb00  →  0x0000000000000001
+$r14   : 0x0               
+$r15   : 0x0               
+$eflags: [ZERO carry PARITY adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000 
+──────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffd960│+0x0000: 0x88968586858f948f	 ← $rsp
+0x00007fffffffd968│+0x0008: 0xb6a7aaa9a3b2b5bd
+0x00007fffffffd970│+0x0010: 0xa1a7a6b1a5a1abb6
+0x00007fffffffd978│+0x0018: 0xa3a7b4a4a1b4b1a8
+0x00007fffffffd980│+0x0020: 0x0042bfb6b5a3a8ad
+0x00007fffffffd988│+0x0028: 0x00007ffff7b7fbfb  →  &lt;__pthread_initialize_minimal+875&gt; mov rax, QWORD PTR [rsp+0xc8]
+0x00007fffffffd990│+0x0030: 0x00007f000a6f6f66 (&quot;foo&quot;?)	 ← $rax, $rdx
+0x00007fffffffd998│+0x0038: 0x00007ffff7b80c70  →  &lt;__wait_lookup_done+0&gt; push r15
+────────────────────────────────────────────────────────── code:x86:64 ────
+   0x5555559571b0                  je     0x55555595709e
+   0x5555559571b6                  jne    0x55555595709e
+   0x5555559571bc                  call   0x555555555620 &lt;fgets@plt&gt;
+ → 0x5555559571c1                  je     0x5555559571ca	TAKEN [Reason: Z]
+   ↳  0x5555559571ca                  lea    rax, [rbp-0x90]
+      0x5555559571d1                  jmp    0x5555559571e5
+      0x5555559571d3                  movzx  eax, BYTE PTR [rbp+rax*1-0xc0]
+      0x5555559571db                  jmp    0x555555957153
+      0x5555559571e0                  push   rbp
+      0x5555559571e1                  jb     0x555555957204
+──────────────────────────────────────────────────────────────── trace ────
+[#0] 0x5555559571c1 → je 0x5555559571ca
+───────────────────────────────────────────────────────────────────────────
+gef➤  awatch *0x7fffffffd990
+Hardware access (read/write) watchpoint 2: *0x7fffffffd990
+</code></pre>
+
+<p>What did I do here?
+First, I set the breakpoint on <code>fgets</code> before the program is started (<code>b fgets</code>, short for breakpoint).
+Then I run the program (<code>r</code>, short for run).</p>
+
+<p>When <code>fgets</code> is called and the breakpoint hits, I let the function finish (<code>fin</code>) and enter some password (here &lsquo;foo&rsquo;).
+But the <a href="https://github.com/hugsy/gef">gef</a> script I use gdb with is also so nice to tell me where the destination buffer of <code>fgets</code> is located:
+at 0x7fffffffd990</p>
+
+<pre><code>Run till exit from #0  _IO_fgets (buf=0x7fffffffd990 &quot;z\357\377\377\377\177&quot;, n=0x80, fp=0x7ffff7d83a00 &lt;_IO_2_1_stdin_&gt;) at iofgets.c:37
+</code></pre>
+
+<p>Then I set an access breakpoint on it (<code>awatch *0x7fffffffd990</code>).
+So now the program will be stopped at every read or write access to the memory at <code>0x7fffffffd990</code>.</p>
+
+<p>This happens first inside <code>strtok</code>:</p>
+
+<pre><code>gef➤  c
+Continuing.
+
+Hardware access (read/write) watchpoint 2: *0x7fffffffd990
+
+Value = 0xa6f6f66
+0x00007ffff7c3d125 in __GI___strtok_r (s=0x7fffffffd990 &quot;foo\n&quot;, delim=0x555555555948 &quot;\n&quot;, save_ptr=0x7ffff7d86728 &lt;olds&gt;) at strtok_r.c:49
+49	strtok_r.c: Datei oder Verzeichnis nicht gefunden.
+[ Legend: Modified register | Code | Heap | Stack | String ]
+──────────────────────────────────────────────────────────── registers ────
+$rax   : 0x00007fffffffd990  →  0x00007f000a6f6f66 (&quot;foo&quot;?)
+$rbx   : 0x00007fffffffd990  →  0x00007f000a6f6f66 (&quot;foo&quot;?)
+$rcx   : 0xfbad2288        
+$rdx   : 0x00007ffff7d86728  →  0x0000000000000000
+$rsp   : 0x00007fffffffd940  →  0x0000000000000000
+$rbp   : 0x00007ffff7d86728  →  0x0000000000000000
+$rsi   : 0x0000555555555948  →   or al, BYTE PTR [rax]
+$rdi   : 0x00007fffffffd990  →  0x00007f000a6f6f66 (&quot;foo&quot;?)
+$rip   : 0x00007ffff7c3d125  →  &lt;strtok_r+21&gt; je 0x7ffff7c3d160 &lt;__GI___strtok_r+80&gt;
+$r8    : 0x0000555555958674  →  0x0000000000000000
+$r9    : 0x00007ffff7b76b80  →  0x00007ffff7b76b80  →  [loop detected]
+$r10   : 0x00007ffff7d83ca0  →  0x0000555555958a70  →  0x0000000000000000
+$r11   : 0x246             
+$r12   : 0x0000555555555948  →   or al, BYTE PTR [rax]
+$r13   : 0x00007fffffffdb00  →  0x0000000000000001
+$r14   : 0x0               
+$r15   : 0x0               
+$eflags: [zero carry PARITY adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000 
+──────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffd940│+0x0000: 0x0000000000000000	 ← $rsp
+0x00007fffffffd948│+0x0008: 0x00007fffffffda20  →  0x0000555555555890  →  &lt;__libc_csu_init+0&gt; push r15
+0x00007fffffffd950│+0x0010: 0x0000555555555650  →  &lt;_start+0&gt; xor ebp, ebp
+0x00007fffffffd958│+0x0018: 0x00005555559570fa  →   je 0x5555559570bf
+0x00007fffffffd960│+0x0020: 0x88968586858f948f
+0x00007fffffffd968│+0x0028: 0xb6a7aaa9a3b2b5bd
+0x00007fffffffd970│+0x0030: 0xa1a7a6b1a5a1abb6
+0x00007fffffffd978│+0x0038: 0xa3a7b4a4a1b4b1a8
+────────────────────────────────────────────────────────── code:x86:64 ────
+   0x7ffff7c3d11d &lt;strtok_r+13&gt;    test   rdi, rdi
+   0x7ffff7c3d120 &lt;strtok_r+16&gt;    je     0x7ffff7c3d170 &lt;__GI___strtok_r+96&gt;
+   0x7ffff7c3d122 &lt;strtok_r+18&gt;    cmp    BYTE PTR [rbx], 0x0
+ → 0x7ffff7c3d125 &lt;strtok_r+21&gt;    je     0x7ffff7c3d160 &lt;__GI___strtok_r+80&gt;	NOT taken [Reason: !(Z)]
+   0x7ffff7c3d127 &lt;strtok_r+23&gt;    mov    rdi, rbx
+   0x7ffff7c3d12a &lt;strtok_r+26&gt;    mov    rsi, r12
+   0x7ffff7c3d12d &lt;strtok_r+29&gt;    call   0x7ffff7bc40b0 &lt;*ABS*+0x9d720@plt&gt;
+   0x7ffff7c3d132 &lt;strtok_r+34&gt;    add    rbx, rax
+   0x7ffff7c3d135 &lt;strtok_r+37&gt;    cmp    BYTE PTR [rbx], 0x0
+──────────────────────────────────────────────────────────────── trace ────
+[#0] 0x7ffff7c3d125 → __GI___strtok_r(s=0x7fffffffd990 &quot;foo\n&quot;, delim=0x555555555948 &quot;\n&quot;, save_ptr=0x7ffff7d86728 &lt;olds&gt;)
+[#1] 0x5555559570fa → je 0x5555559570bf
+───────────────────────────────────────────────────────────────────────────
+</code></pre>
+
+<p>We already know <code>strtok</code> is called with the password from the <code>ltrace</code> output above, so no surprise here:
+<code>strtok</code> here just replaces the trailing newline (&rsquo;\n&rsquo;) with 0.</p>
+
+<p>But the breakpoint will trigger multiple times in <code>strtok</code> (and <code>strspn</code>, which is called by <code>strtok</code>), so it&rsquo;s best to temporally disable the breakpoint until the function has finished, than re-enable it again (the &lsquo;2&rsquo; is the breakpoint number):</p>
+
+<pre><code>gef➤  disable 2
+gef➤  finish 
+Run till exit from #0  0x00007ffff7c3d132 in __GI___strtok_r (s=0x7fffffffd990 &quot;foo\n&quot;, delim=0x555555555948 &quot;\n&quot;, save_ptr=0x7ffff7d86728 &lt;olds&gt;) at strtok_r.c:56
+0x00005555559570fa in ?? ()
+Value returned is $3 = 0x7fffffffd990 &quot;foo&quot;
+[ Legend: Modified register | Code | Heap | Stack | String ]
+──────────────────────────────────────────────────────────── registers ────
+$rax   : 0x00007fffffffd990  →  0x00007f00006f6f66 (&quot;foo&quot;?)
+$rbx   : 0x0               
+$rcx   : 0x3               
+$rdx   : 0x00007fffffffd990  →  0x00007f00006f6f66 (&quot;foo&quot;?)
+$rsp   : 0x00007fffffffd960  →  0x88968586858f948f
+$rbp   : 0x00007fffffffda20  →  0x0000555555555890  →  &lt;__libc_csu_init+0&gt; push r15
+$rsi   : 0x1               
+$rdi   : 0x00007fffffffd990  →  0x00007f00006f6f66 (&quot;foo&quot;?)
+$rip   : 0x00005555559570fa  →   je 0x5555559570bf
+$r8    : 0x0000555555555940  →  0x003f64726f777373 (&quot;ssword?&quot;?)
+$r9    : 0x00007ffff7b76b80  →  0x00007ffff7b76b80  →  [loop detected]
+$r10   : 0x00007ffff7d83ca0  →  0x0000555555958a70  →  0x0000000000000000
+$r11   : 0x246             
+$r12   : 0x0000555555555650  →  &lt;_start+0&gt; xor ebp, ebp
+$r13   : 0x00007fffffffdb00  →  0x0000000000000001
+$r14   : 0x0               
+$r15   : 0x0               
+$eflags: [zero carry parity adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000 
+──────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffd960│+0x0000: 0x88968586858f948f	 ← $rsp
+0x00007fffffffd968│+0x0008: 0xb6a7aaa9a3b2b5bd
+0x00007fffffffd970│+0x0010: 0xa1a7a6b1a5a1abb6
+0x00007fffffffd978│+0x0018: 0xa3a7b4a4a1b4b1a8
+0x00007fffffffd980│+0x0020: 0x0042bfb6b5a3a8ad
+0x00007fffffffd988│+0x0028: 0x00007ffff7b7fbfb  →  &lt;__pthread_initialize_minimal+875&gt; mov rax, QWORD PTR [rsp+0xc8]
+0x00007fffffffd990│+0x0030: 0x00007f00006f6f66 (&quot;foo&quot;?)	 ← $rax, $rdx, $rdi
+0x00007fffffffd998│+0x0038: 0x00007ffff7b80c70  →  &lt;__wait_lookup_done+0&gt; push r15
+────────────────────────────────────────────────────────── code:x86:64 ────
+   0x5555559570ed                  xchg   BYTE PTR [rbp+0x7d7b8896], al
+   0x5555559570f3                  jp     0x555555957170
+   0x5555559570f5                  call   0x555555555630 &lt;strtok@plt&gt;
+ → 0x5555559570fa                  je     0x5555559570bf	NOT taken [Reason: !(Z)]
+   0x5555559570fc                  jne    0x5555559570bf
+   0x5555559570fe                  cdqe   
+   0x555555957100                  jno    0x55555595726c
+   0x555555957106                  jo     0x55555595726c
+   0x55555595710c                  mov    QWORD PTR [rbp-0xc0], rax
+──────────────────────────────────────────────────────────────── trace ────
+[#0] 0x5555559570fa → je 0x5555559570bf
+───────────────────────────────────────────────────────────────────────────
+gef➤  enable 2
+gef➤  
+</code></pre>
+
+<p>The next hit is in <code>strlen</code>.
+Again, no surprise; again, not interesting.
+I will omit coping the entire gdb output here, but the procedure is the same as with <code>strtok</code>:</p>
+
+<pre><code>gef➤  disable 2
+gef➤  finish 
+gef➤  enable 2
+</code></pre>
+
+<p>Then things get more interesting:</p>
+
+<pre><code>gef➤  c
+Continuing.
+
+Hardware access (read/write) watchpoint 2: *0x7fffffffd990
+
+Value = 0x6f6f66
+0x000055555595708e in ?? ()
+[ Legend: Modified register | Code | Heap | Stack | String ]
+──────────────────────────────────────────────────────────── registers ────
+$rax   : 0x66              
+$rbx   : 0x0               
+$rcx   : 0x990             
+$rdx   : 0xc0d8            
+$rsp   : 0x00007fffffffd960  →  0x88968586858f948f
+$rbp   : 0x00007fffffffda20  →  0x0000555555555890  →  &lt;__libc_csu_init+0&gt; push r15
+$rsi   : 0x1               
+$rdi   : 0x00007fffffffd990  →  0x00007f00006f6f66 (&quot;foo&quot;?)
+$rip   : 0x000055555595708e  →   jb 0x555555957145
+$r8    : 0x0000555555555940  →  0x003f64726f777373 (&quot;ssword?&quot;?)
+$r9    : 0x00007ffff7b76b80  →  0x00007ffff7b76b80  →  [loop detected]
+$r10   : 0x00007ffff7d83ca0  →  0x0000555555958a70  →  0x0000000000000000
+$r11   : 0x246             
+$r12   : 0x0000555555555650  →  &lt;_start+0&gt; xor ebp, ebp
+$r13   : 0x00007fffffffdb00  →  0x0000000000000001
+$r14   : 0x0               
+$r15   : 0x0               
+$eflags: [zero CARRY parity ADJUST SIGN trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000 
+──────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffd960│+0x0000: 0x88968586858f948f	 ← $rsp
+0x00007fffffffd968│+0x0008: 0xb6a7aaa9a3b2b5bd
+0x00007fffffffd970│+0x0010: 0xa1a7a6b1a5a1abb6
+0x00007fffffffd978│+0x0018: 0xa3a7b4a4a1b4b1a8
+0x00007fffffffd980│+0x0020: 0x0042bfb6b5a3a8ad
+0x00007fffffffd988│+0x0028: 0x00007ffff7b7fbfb  →  &lt;__pthread_initialize_minimal+875&gt; mov rax, QWORD PTR [rsp+0xc8]
+0x00007fffffffd990│+0x0030: 0x00007f00006f6f66 (&quot;foo&quot;?)	 ← $rdi
+0x00007fffffffd998│+0x0038: 0x00007ffff7b80c70  →  &lt;__wait_lookup_done+0&gt; push r15
+────────────────────────────────────────────────────────── code:x86:64 ────
+   0x55555595707a                  jb     0x55555595711f
+   0x555555957080                  jae    0x55555595711f
+   0x555555957086                  movzx  eax, BYTE PTR [rbp+rax*1-0x90]
+ → 0x55555595708e                  jb     0x555555957145	TAKEN [Reason: C]
+   ↳  0x555555957145                  add    eax, 0x42
+      0x555555957148                  je     0x5555559570e0
+      0x55555595714a                  jne    0x5555559570e0
+      0x55555595714c                  mov    rdi, rax
+      0x55555595714f                  jb     0x5555559571bc
+      0x555555957151                  jae    0x5555559571bc
+──────────────────────────────────────────────────────────────── trace ────
+[#0] 0x55555595708e → jb 0x555555957145
+───────────────────────────────────────────────────────────────────────────
+gef➤ 
+</code></pre>
+
+<p>Memory breakpoints trigger after the access has happened; so the instruction that triggered it was</p>
+
+<pre><code>   0x555555957086                  movzx  eax, BYTE PTR [rbp+rax*1-0x90]
+</code></pre>
+
+<p>The first byte of our password (&lsquo;foo&rsquo;, remember) got loaded into <code>eax</code>.
+But the really interesting stuff comes after this:</p>
+
+<pre><code>   0x555555957086                  movzx  eax, BYTE PTR [rbp+rax*1-0x90]
+ → 0x55555595708e                  jb     0x555555957145	TAKEN [Reason: C]
+   ↳  0x555555957145                  add    eax, 0x42
+</code></pre>
+
+<p><code>0x42</code> gets added to out password byte.
+This could be a some sort of (extremely simple) encryption and is definitely something to look into a little deeper.
+If we singestep further and remove the obfuscation jumps, the next real instructions are:</p>
+
+<pre><code>   0x555555957086                  movzx  eax, BYTE PTR [rbp+rax*1-0x90]
+ → 0x555555957145                  add    eax, 0x42
+   0x5555559570e0                  mov    edx, eax
+   0x55555595703f                  mov    eax, DWORD PTR [rbp-0x8]
+   0x5555559570fe                  cdqe   
+   0x55555595726c                  mov    BYTE PTR [rbp+rax*1-0x90], dl
+   0x5555559571f0                  mov    eax, DWORD PTR [rbp-0x8]
+   0x55555595709a                  cdqe   
+   0x55555595705a                  movzx  eax, BYTE PTR [rbp+rax*1-0x90]
+   0x5555559571fe                  mov    edx, eax
+   0x55555595727f                  mov    eax, DWORD PTR [rbp-0x8]
+   0x5555559570d2                  cdqe   
+   0x5555559571d3                  movzx  eax, BYTE PTR [rbp+rax*1-0xc0]
+   0x555555957153                  sub    edx, eax
+   0x55555595721b                  mov    eax, edx
+   0x55555595706e                  or     BYTE PTR [rbp-0x1], al
+</code></pre>
+
+<p>The password character + 0x42 gets written back to the password buffer (<code>0x55555595726c</code>),
+just to be read back into <code>rax</code> (<code>0x55555595705a</code>).
+It is then placed into <code>rdx</code> (<code>0x5555559571fe</code>), and an other value gets read into <code>rax</code>, this time from <code>[rbp+rax*1-0xc0]</code> (<code>0x5555559571d3</code>).
+This value gets subtracted from our &lsquo;encrypted&rsquo; password character (<code>0x555555957153</code>),
+and the result is or&rsquo;red to the local variable at <code>[rbp-0x1]</code> (<code>0x55555595706e</code>) (which is 0 at the beginning).</p>
+
+<p>So the difference between the password char + 0x42 and the value at <code>[rbp+rax*1-0xc0]</code> is calculated.
+And if that difference is not 0, <code>[rbp-0x1]</code> will be set to a value != 0; if (and only if) there is no difference <code>[rbp-0x1]</code> will remain 0.</p>
+
+<p>So what is there at <code>[rbp+rax*1-0xc0]</code> (<code>0x7fffffffd940</code>, if <code>rax</code> is 0)?</p>
+
+<pre><code>gef➤  x/40bx 0x7fffffffd940
+0x7fffffffd940:	0x8f	0x94	0x8f	0x85	0x86	0x85	0x96	0x88
+0x7fffffffd948:	0xbd	0xb5	0xb2	0xa3	0xa9	0xaa	0xa7	0xb6
+0x7fffffffd950:	0xb6	0xab	0xa1	0xa5	0xb1	0xa6	0xa7	0xa1
+0x7fffffffd958:	0xa8	0xb1	0xb4	0xa1	0xa4	0xb4	0xa7	0xa3
+0x7fffffffd960:	0xad	0xa8	0xa3	0xb5	0xb6	0xbf	0x42	0x00
+</code></pre>
+
+<p>The first value is <code>0x8f</code>; <code>0x8f - 0x42</code> is <code>0x4e</code> - ascii for &rsquo;M&rsquo;.
+So if the first password character is <code>M</code>, the local variable at <code>[rbp-0x1]</code> (which you might have guess already serves as a &lsquo;wrong` marker) remains at 0.</p>
+
+<p>The <code>M</code> is not that much of a surprise as all flags in MRMCDCTF begin with, well, the letters <code>MRMCDCTF{</code>.
+And all that&rsquo;s now left to do is subtract <code>0x42</code> from the other values to get the final flag.</p>
+
+<h4 id="solution-2-the-painful-one">Solution 2: The painful one</h4>
+
+<p>You can simply single-step until you reach the checks.
+This is how it was solved during testing.</p>
+
+<p>Not nice, but it seems to work.</p>
+<ul class="pa0">
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/mrmcdctf2019" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">MRMCDCTF2019</a>
+   </li>
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/ctf" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">CTF</a>
+   </li>
+  
+</ul>
+<div class="mt6">
+        
+      </div>
+    </section>
+
+    <aside class="w-30-l mt6-l">
+
+
+
+
+  <div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">Related</p>
+    <ul class="pa0 list">
+	   
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-misguided/">MRMCDCTF2019: Misguided</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/">MRMCDCTF2019: Cereal</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-konradvc/">MRMCDCTF2019: KonradVC</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-hopping_machine/">MRMCDCTF2019: Hopping machine</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-slicer/">MRMCDCTF2019: Slicer</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-sitting_duck/">MRMCDCTF2019: Sitting duck</a>
+        </li>
+	    
+    </ul>
+</div>
+
+</aside>
+
+  </article>
+
+    </main>
+    <footer class="bg-navy bottom-0 w-100 pa3" role="contentinfo">
+  <div class="flex justify-between">
+  <a class="f4 fw4 hover-white no-underline white-70 dn dib-ns pv2 ph3" href="https://schlafwandler.github.io" >
+    &copy; 2019 Pointers to the void
+  </a>
+    <div>
+
+
+
+
+
+
+
+
+
+
+</div>
+  </div>
+</footer>
+
+    
+
+  <script src="https://schlafwandler.github.io/dist/js/app.3fc0f988d21662902933.js"></script>
+
+
+  </body>
+</html>
