@@ -38,7 +38,7 @@
 <meta property="og:description" content="" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://schlafwandler.github.io/posts/" />
-<meta property="og:updated_time" content="2019-10-10T00:18:06&#43;02:00"/>
+<meta property="og:updated_time" content="2019-10-28T21:22:51&#43;02:00"/>
 
 <meta itemprop="name" content="Posts">
 <meta itemprop="description" content="">
@@ -107,6 +107,23 @@
   <article class="pa3 pa4-ns nested-copy-line-height nested-img">
     <section class="cf ph3 ph5-l pv3 pv4-l f4 tc-l center measure-wide lh-copy mid-gray"></section>
     <section class="flex-ns flex-wrap justify-around mt5">
+      
+        <div class="relative w-100 w-30-l mb4 bg-white"><div class="relative w-100 mb4 bg-white nested-copy-line-height">
+  <div class="bg-white mb3 pa4 gray overflow-hidden">
+    <span class="f6 db">Posts</span>
+    <h1 class="f3 near-black">
+      <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-elizevc/" class="link black dim">
+        MRMCDCTF2019: ElizeVC
+      </a>
+    </h1>
+    <div class="nested-links f5 lh-copy nested-copy-line-height">
+      Solution to ElizeVC (very hard) from MRMCDCTF 2019 ElizeVC was the hardest challenge I had written for this year&rsquo;s MRMCDCTF.
+Protections The binary of this challenge is protected with various methods:
+ crypter/protector: The binary is encrypted on a per-function basis. Each protected function is encrypted with 128-bit XTEA in Counter Mode, with different keys and IVs for every function. Whenever a protected function is entered, the uncrypter is called, which decrypts the function in place.
+    </div>
+  </div>
+</div>
+</div>
       
         <div class="relative w-100 w-30-l mb4 bg-white"><div class="relative w-100 mb4 bg-white nested-copy-line-height">
   <div class="bg-white mb3 pa4 gray overflow-hidden">
@@ -250,21 +267,6 @@ But first, lets have a look at two virtual files on a Linux system: /proc/kcore 
     </h1>
     <div class="nested-links f5 lh-copy nested-copy-line-height">
       VIRTUAL_SetForceExec - WINE&rsquo;s magic gadget In the last part of the series I demonstated a way to make the stack executable by returning to VirtualProtect. This is a nice and easy way to achieve arbitrary code execution - as long as you target a 32 bit programm. When targeting 64 bit programs there is a nasty obstacle to this trick: The x64 calling convention ships the first 4 parameters in the registers RCX, RDX, R8, and R9.
-    </div>
-  </div>
-</div>
-</div>
-      
-        <div class="relative w-100 w-30-l mb4 bg-white"><div class="relative w-100 mb4 bg-white nested-copy-line-height">
-  <div class="bg-white mb3 pa4 gray overflow-hidden">
-    <span class="f6 db">Posts</span>
-    <h1 class="f3 near-black">
-      <a href="https://schlafwandler.github.io/posts/attacking-wine-part-ii/" class="link black dim">
-        Attacking applications running under WINE (Part II)
-      </a>
-    </h1>
-    <div class="nested-links f5 lh-copy nested-copy-line-height">
-      Simple exploits against targets under WINE In this part of the series, I will demonstrate some simple exploits against Windows executables running under WINE. I will assume basic knowledge on exploiting stack overflows on the x86 architecture. Additionally, some knowledge of return-oriented-programming (ROP) or return-to-libc exploitation techniques is beneficial. Out of convenience I&rsquo;m using pwntools for the development of the exploits, but every other toolkit will work as well. Also, I&rsquo;m showing some rather simple task in some detail to demonstrate the use of Linux tools against windows binaries.
     </div>
   </div>
 </div>

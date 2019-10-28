@@ -38,7 +38,7 @@
 <meta property="og:description" content="" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://schlafwandler.github.io/" />
-<meta property="og:updated_time" content="2019-10-10T00:18:06&#43;02:00"/>
+<meta property="og:updated_time" content="2019-10-28T21:22:51&#43;02:00"/>
 
 <meta itemprop="name" content="Pointers to the void">
 <meta itemprop="description" content="">
@@ -138,6 +138,32 @@
       
       <div class="blah w-100">
         <h1 class="f3 fw1 athelas mt0 lh-title">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-elizevc/" class="color-inherit dim link">
+            MRMCDCTF2019: ElizeVC
+            </a>
+        </h1>
+        <div class="f6 f5-l lh-copy nested-copy-line-height nested-links">
+          Solution to ElizeVC (very hard) from MRMCDCTF 2019 ElizeVC was the hardest challenge I had written for this year&rsquo;s MRMCDCTF.
+Protections The binary of this challenge is protected with various methods:
+ crypter/protector: The binary is encrypted on a per-function basis. Each protected function is encrypted with 128-bit XTEA in Counter Mode, with different keys and IVs for every function. Whenever a protected function is entered, the uncrypter is called, which decrypts the function in place.
+        </div>
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-elizevc/" class="ba b--moon-gray bg-light-gray br2 color-inherit dib f7 hover-bg-moon-gray link mt2 ph2 pv1">read more</a>
+        
+      </div>
+    </div>
+  </div>
+</article>
+
+          </div>
+        
+          <div class="relative w-100 mb4">
+            
+<article class="bb b--black-10">
+  <div class="db pv4 ph3 ph0-l no-underline dark-gray">
+    <div class="flex flex-column flex-row-ns">
+      
+      <div class="blah w-100">
+        <h1 class="f3 fw1 athelas mt0 lh-title">
           <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-carbonara/" class="color-inherit dim link">
             MRMCDCTF2019: Carbonara
             </a>
@@ -180,38 +206,18 @@ When loading it in Ghidra, the first thing we notice is that there seem to be on
 
           </div>
         
-          <div class="relative w-100 mb4">
-            
-<article class="bb b--black-10">
-  <div class="db pv4 ph3 ph0-l no-underline dark-gray">
-    <div class="flex flex-column flex-row-ns">
-      
-      <div class="blah w-100">
-        <h1 class="f3 fw1 athelas mt0 lh-title">
-          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-misguided/" class="color-inherit dim link">
-            MRMCDCTF2019: Misguided
-            </a>
-        </h1>
-        <div class="f6 f5-l lh-copy nested-copy-line-height nested-links">
-          Solution to Misguided (easy - medium) from MRMCDCTF 2019 Misguided is another Linux binary reversing challenge I had written for MRMCDCTF 2019. This one employs some simple obfuscation: Some entries in the symbol table are mixed up.
-When opening the file in Ghidra (like we have done with Cereal or Slicer before), at first, everything seems normal.
-This changes once we take at look at main, which decompiles to this:
-        </div>
-          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-misguided/" class="ba b--moon-gray bg-light-gray br2 color-inherit dib f7 hover-bg-moon-gray link mt2 ph2 pv1">read more</a>
-        
-      </div>
-    </div>
-  </div>
-</article>
-
-          </div>
-        
       </section>
 
       
       <section class="w-100">
         <h1 class="f3">More</h1>
         
+        
+          <h2 class="f5 fw4 mb4 dib mr3">
+            <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-misguided/" class="link black dim">
+              MRMCDCTF2019: Misguided
+            </a>
+          </h2>
         
           <h2 class="f5 fw4 mb4 dib mr3">
             <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-hopping_machine/" class="link black dim">
@@ -228,12 +234,6 @@ This changes once we take at look at main, which decompiles to this:
           <h2 class="f5 fw4 mb4 dib mr3">
             <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/" class="link black dim">
               MRMCDCTF2019: Cereal
-            </a>
-          </h2>
-        
-          <h2 class="f5 fw4 mb4 dib mr3">
-            <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-sitting_duck/" class="link black dim">
-              MRMCDCTF2019: Sitting duck
             </a>
           </h2>
         

@@ -6,10 +6,21 @@
     <description>Recent content in Posts on Pointers to the void</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 10 Oct 2019 00:18:06 +0200</lastBuildDate>
+    <lastBuildDate>Mon, 28 Oct 2019 21:22:51 +0200</lastBuildDate>
     
 	<atom:link href="https://schlafwandler.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>MRMCDCTF2019: ElizeVC</title>
+      <link>https://schlafwandler.github.io/posts/mrmcdctf2019-elizevc/</link>
+      <pubDate>Mon, 28 Oct 2019 21:22:51 +0200</pubDate>
+      
+      <guid>https://schlafwandler.github.io/posts/mrmcdctf2019-elizevc/</guid>
+      <description>Solution to ElizeVC (very hard) from MRMCDCTF 2019 ElizeVC was the hardest challenge I had written for this year&amp;rsquo;s MRMCDCTF.
+Protections The binary of this challenge is protected with various methods:
+ crypter/protector: The binary is encrypted on a per-function basis. Each protected function is encrypted with 128-bit XTEA in Counter Mode, with different keys and IVs for every function. Whenever a protected function is entered, the uncrypter is called, which decrypts the function in place.</description>
+    </item>
     
     <item>
       <title>MRMCDCTF2019: Carbonara</title>

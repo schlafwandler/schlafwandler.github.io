@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    
+    <title>Pointers to the void  | MRMCDCTF2019: ElizeVC</title>
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+
+    <meta name="viewport" content="width=device-width,minimum-scale=1">
+    <meta name="generator" content="Hugo 0.52" />
+    
+    
+      <META NAME="ROBOTS" CONTENT="INDEX, FOLLOW">
+    
+
+    
+    
+      <link href="https://schlafwandler.github.io/dist/css/app.d98f2eb6bcd1eaedb7edf166bd16af26.css" rel="stylesheet">
+    
+
+    
+
+    
+      
+    
+
+    <meta content="CTF, capture the flag, linux, binary, gdb, gef, ghidra, reversing, obfuscation, crypter, protector" name="keywords">
+    <meta content=" - " property="og:description">
+
+    
+
+    <meta property="og:title" content="MRMCDCTF2019: ElizeVC" />
+<meta property="og:description" content="Solution to ElizeVC (very hard) from MRMCDCTF 2019 ElizeVC was the hardest challenge I had written for this year&rsquo;s MRMCDCTF.
+Protections The binary of this challenge is protected with various methods:
+ crypter/protector: The binary is encrypted on a per-function basis. Each protected function is encrypted with 128-bit XTEA in Counter Mode, with different keys and IVs for every function. Whenever a protected function is entered, the uncrypter is called, which decrypts the function in place." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://schlafwandler.github.io/posts/mrmcdctf2019-elizevc/" /><meta property="article:published_time" content="2019-10-28T21:22:51&#43;02:00"/>
+<meta property="article:modified_time" content="2019-10-28T21:22:51&#43;02:00"/>
+
+
+<meta itemprop="name" content="MRMCDCTF2019: ElizeVC">
+<meta itemprop="description" content="Solution to ElizeVC (very hard) from MRMCDCTF 2019 ElizeVC was the hardest challenge I had written for this year&rsquo;s MRMCDCTF.
+Protections The binary of this challenge is protected with various methods:
+ crypter/protector: The binary is encrypted on a per-function basis. Each protected function is encrypted with 128-bit XTEA in Counter Mode, with different keys and IVs for every function. Whenever a protected function is entered, the uncrypter is called, which decrypts the function in place.">
+
+
+<meta itemprop="datePublished" content="2019-10-28T21:22:51&#43;02:00" />
+<meta itemprop="dateModified" content="2019-10-28T21:22:51&#43;02:00" />
+<meta itemprop="wordCount" content="4750">
+
+
+
+<meta itemprop="keywords" content="MRMCDCTF2019,CTF," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="MRMCDCTF2019: ElizeVC"/>
+<meta name="twitter:description" content="Solution to ElizeVC (very hard) from MRMCDCTF 2019 ElizeVC was the hardest challenge I had written for this year&rsquo;s MRMCDCTF.
+Protections The binary of this challenge is protected with various methods:
+ crypter/protector: The binary is encrypted on a per-function basis. Each protected function is encrypted with 128-bit XTEA in Counter Mode, with different keys and IVs for every function. Whenever a protected function is entered, the uncrypter is called, which decrypts the function in place."/>
+
+      
+    
+  </head>
+
+  <body class="ma0 avenir bg-near-white">
+
+    
+   
+  
+
+  <header>
+    <div class="bg-navy">
+      <nav class="pv3 ph3 ph4-ns" role="navigation">
+  <div class="flex-l justify-between items-center center">
+    <a href="https://schlafwandler.github.io" class="f3 fw2 hover-white no-underline white-90 dib">
+      Pointers to the void
+    </a>
+    <div class="flex-l items-center">
+      
+
+      
+        <ul class="pl0 mr3">
+          
+          <li class="list f5 f4-ns fw4 dib pr3">
+            <a class="hover-white no-underline white-90" href="https://schlafwandler.github.io/tags/" title=" page">
+              
+            </a>
+          </li>
+          
+        </ul>
+      
+      
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+  </div>
+</nav>
+
+    </div>
+  </header>
+
+
+
+    <main class="pb7" role="main">
+      
+  
+  <article class="flex-l flex-wrap justify-between mw8 center ph3">
+
+    <header class="mt4 w-100">
+      <p class="f6 b helvetica tracked">
+          
+        POSTS
+      </p>
+      <h1 class="f1 athelas mb1">MRMCDCTF2019: ElizeVC</h1>
+      
+      <time class="f6 mv4 dib tracked" datetime="2019-10-28T21:22:51&#43;02:00">October 28, 2019</time>      
+      
+      
+    </header>
+
+    <section class="nested-copy-line-height lh-copy serif f4 nested-links nested-img mid-gray pr4-l w-two-thirds-l">
+
+<h2 id="solution-to-elizevc-very-hard-from-mrmcdctf-2019">Solution to ElizeVC (very hard) from MRMCDCTF 2019</h2>
+
+<p><a href="https://github.com/schlafwandler/CTF-challenges/tree/master/MRMCDCTF-2019/reversing/ElizeVC">ElizeVC</a> was the hardest challenge I had written for this year&rsquo;s MRMCDCTF.</p>
+
+<h4 id="protections">Protections</h4>
+
+<p>The binary of this challenge is protected with various methods:</p>
+
+<ul>
+<li>crypter/protector:
+The binary is encrypted on a per-function basis.
+Each protected function is encrypted with 128-bit XTEA in Counter Mode,
+with different keys and IVs for every function.
+Whenever a protected function is entered, the uncrypter is called, which
+decrypts the function in place.
+Before doing so, it checks if it had decrypted another function before.
+If so, that function is re-encrypted before decrypting the later function.
+That way there is never more than one protected function unencrypted in
+memory at any time.</li>
+<li>The uncrypter itself was subjected to the <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-carbonara/">carbonara</a>
+obfuscator to
+transform it into spaghetti code.</li>
+<li>The uncrypter uses <code>ptrace(PTRACE_TRACEME)</code> to check for an attached debugger.
+If a debugger is found, it corrupts the encryption key before decryption.
+This leads to a crash in the protected function (far away from the
+debugger check).</li>
+<li>The uncrypter computes a checksum of itself, which is then used as part
+of the initialisation vector.
+Any modification of the uncrypter code (like patching out the debugger check,
+undoing the carbonara obfuscation or just setting a soft breakpoint) leads
+to a changed IV and corrupted code later on.</li>
+<li>The symbol values of all protected functions were randomised to point to
+(more or less) random places in the binary (similar to the <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-misguided/">misguided</a> challenge).</li>
+</ul>
+
+<h3 id="solution">Solution:</h3>
+
+<p>The challenge can be solved without completely understanding the
+crypter/uncrypter system.</p>
+
+<p>There are two intended solutions:
+the first one solves the challenge with the protections in place, while the second approach is to undo the encryption and (more or less) reconstruct the original binary.
+I will focus on the the first way here, and save the &lsquo;reconstruct the binary&rsquo; solution for an other post.</p>
+
+<p>Both ways rely on getting around the anti-debugger protection, so this is the first thing we will do.</p>
+
+<h4 id="solving-the-anti-debugger-check">Solving the Anti-Debugger check</h4>
+
+<p>The presence of this check can be easily deduced by the fact that the program runs flawlessly without a debugger,
+but crashes once a debugger gets attached.
+And you can detect the nature of the check by running is with strace:</p>
+
+<pre><code>user@host:~/MRMCD2019/reversing/elizeVC/downloads$ strace ./elize 
+execve(&quot;./elize&quot;, [&quot;./elize&quot;], 0x7ffc63821050 /* 70 vars */) = 0
+
+[...]
+
+prlimit64(0, RLIMIT_STACK, NULL, {rlim_cur=8192*1024, rlim_max=RLIM64_INFINITY}) = 0
+ptrace(PTRACE_TRACEME)                  = -1 EPERM (Vorgang nicht zulässig)
+mprotect(0x55c1dab83000, 543, PROT_READ|PROT_WRITE) = 0
+mprotect(0x55c1dab83000, 543, PROT_READ|PROT_EXEC) = 0
+--- SIGSEGV {si_signo=SIGSEGV, si_code=SEGV_MAPERR, si_addr=0x27bb8527} ---
++++ killed by SIGSEGV +++
+Speicherzugriffsfehler
+</code></pre>
+
+<p>Whenever you see a ptrace(PTRACE_TRACEME) syscall in a CTF challenge, you can safely assume it&rsquo;s an anti-debugger trick.</p>
+
+<p>The ptrace check here can not be patched out
+(neither on disk nor in memory) without breaking the checksum
+(which results in faulty decryption).
+When you try to do this, you only will end up with a binary that&rsquo;s not running, no matter whether a debugger is present or not.</p>
+
+<p>However the ptrace syscall can be intercepted by the debugger and its
+return value changed:</p>
+
+<pre><code>[...]
+
+gef➤  catch syscall ptrace
+Abfangpunkt 1 (syscall 'ptrace' [101])
+gef➤  commands
+Type commands for breakpoint(s) 1, one per line.
+End with a line saying just &quot;end&quot;.
+&gt;set $rax = 0
+&gt;c
+&gt;end
+gef➤  r
+Starting program: /media/tmp/elize.encrypted
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library &quot;/lib/x86_64-linux-gnu/libthread_db.so.1&quot;.
+
+Catchpoint 1 (call to syscall ptrace), 0x000055555556323e in ?? ()
+
+Catchpoint 1 (returned from syscall ptrace), 0x000055555556323e in ?? ()
+The password is the flag. What is the password?
+bla
+Wrong. Try again.
+[Inferior 1 (process 6347) exited normally]
+
+[...]
+</code></pre>
+
+<p>The debugger breaks after each ptrace-syscall, sets the return value
+(in rax) to 0 and continues.
+This is equivalent to passing the anti-debugger check, and the program now
+runs under gdb.</p>
+
+<h4 id="solution-1-follow-the-data">Solution 1: Follow the data</h4>
+
+<p>The first intended solution solves the challenge without actually defeating the protector.
+The approach here is to follow the entered password around in memory
+and understand what is happening to it (just as we did with the <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-carbonara/">Carbonara challenge</a>).</p>
+
+<p>The challenge process must somehow read in the password.
+One way to do this is <code>fgets</code>, which is imported, but (seemingly) not referenced in the code (the function using it is encrypted).
+But we can set a breakpoint on it anyway:</p>
+
+<pre><code>gef➤  b fgets
+Haltepunkt 2 at 0x3070
+gef➤  r
+Starting program: /media/truecrypt1/ctf/2019_mrmcd/MRMCD2019/reversing/elizeVC/downloads/elize 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library &quot;/lib/x86_64-linux-gnu/libthread_db.so.1&quot;.
+
+Catchpoint 1 (call to syscall ptrace), 0x000055555556323e in ?? ()
+
+Catchpoint 1 (returned from syscall ptrace), 0x000055555556323e in ?? ()
+The password is the flag. What is the password?
+
+Breakpoint 2, _IO_fgets (buf=0x55555556e670 &quot;&quot;, n=0x100, fp=0x7ffff7d83a00 &lt;_IO_2_1_stdin_&gt;) at iofgets.c:37
+37	iofgets.c: Datei oder Verzeichnis nicht gefunden.
+[ Legend: Modified register | Code | Heap | Stack | String ]
+──────────────────────────────────────────────────────────── registers ────
+[...]
+────────────────────────────────────────────────────────── code:x86:64 ────
+   0x7ffff7c210f4 &lt;fgetpos64+388&gt;  mov    rsi, rax
+   0x7ffff7c210f7 &lt;fgetpos64+391&gt;  jmp    0x7ffff7bc46f8 &lt;_IO_new_fgetpos+4294588296&gt;
+   0x7ffff7c210fc                  nop    DWORD PTR [rax+0x0]
+ → 0x7ffff7c21100 &lt;fgets+0&gt;        test   esi, esi
+   0x7ffff7c21102 &lt;fgets+2&gt;        jle    0x7ffff7c21240 &lt;_IO_fgets+320&gt;
+   0x7ffff7c21108 &lt;fgets+8&gt;        push   r12
+   0x7ffff7c2110a &lt;fgets+10&gt;       mov    r8d, esi
+   0x7ffff7c2110d &lt;fgets+13&gt;       mov    r12, rdi
+   0x7ffff7c21110 &lt;fgets+16&gt;       push   rbp
+
+</code></pre>
+
+<p>Success!
+The program has now executed past the point where it displays the &ldquo;What is the password?&rdquo; message and is trying the get the password from the user.</p>
+
+<p>We can now finish <code>fgets</code>, and then set an access watchpoint on the read buffer (0x55555556e670, see the &lsquo;Breakpoint 2&rsquo;-line).</p>
+
+<pre><code>gef➤  finish
+Run till exit from #0  _IO_fgets (buf=0x55555556e670 &quot;&quot;, n=0x100, fp=0x7ffff7d83a00 &lt;_IO_2_1_stdin_&gt;) at iofgets.c:37
+fooooooooo
+0x000055555555727e in ?? ()
+Value returned is $1 = 0x55555556e670 &quot;fooooooooo\n&quot;
+[ Legend: Modified register | Code | Heap | Stack | String ]
+───────────────────────────────────────────────────────────────────── registers ────
+$rax   : 0x000055555556e670  →  &quot;fooooooooo&quot;
+$rbx   : 0x0000555555557231  →   mov edi, 0x100
+$rcx   : 0xfbad2288        
+$rdx   : 0x000055555556e670  →  &quot;fooooooooo&quot;
+$rsp   : 0x00007fffffffd898  →  0x000055555556d160  →  0x000000000000adc1
+$rbp   : 0x00007fffffffd8b0  →  0x00007fffffffd950  →  0x00007fffffffd978  →  0x00007fffffffda18  →  0x00007fffffffda30  →  0x00005555555585b0  →  &lt;__libc_csu_init+0&gt; push r15
+$rsi   : 0x00007ffff7d86590  →  0x0000000000000000
+$rdi   : 0x000055555556e671  →  &quot;ooooooooo&quot;
+$rip   : 0x000055555555727e  →   mov rax, QWORD PTR [rbp-0x8]
+$r8    : 0x000055555556e78b  →  0x0000000000000000
+$r9    : 0x00007ffff7b76b80  →  0x00007ffff7b76b80  →  [loop detected]
+$r10   : 0x00007ffff7d83ca0  →  0x000055555556eb80  →  0x0000000000000000
+$r11   : 0x246             
+$r12   : 0x00005555555570c0  →  &lt;_start+0&gt; xor ebp, ebp
+$r13   : 0x00007fffffffdb10  →  0x0000000000000001
+$r14   : 0x0               
+$r15   : 0x0               
+$eflags: [ZERO carry PARITY adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000 
+───────────────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffd898│+0x0000: 0x000055555556d160  →  0x000000000000adc1	 ← $rsp
+0x00007fffffffd8a0│+0x0008: 0x00007fffffffd920  →  0x0000008f24e9b100
+0x00007fffffffd8a8│+0x0010: 0x000055555556e670  →  &quot;fooooooooo&quot;
+0x00007fffffffd8b0│+0x0018: 0x00007fffffffd950  →  0x00007fffffffd978  →  0x00007fffffffda18  →  0x00007fffffffda30  →  0x00005555555585b0  →  &lt;__libc_csu_init+0&gt; push r15	 ← $rbp
+0x00007fffffffd8b8│+0x0020: 0x000055555556358a  →   jne 0x5555555632ad
+0x00007fffffffd8c0│+0x0028: 0x00007ffff7f91f10  →  0x00007ffff7b78000  →  0x03010102464c457f
+0x00007fffffffd8c8│+0x0030: 0x00000000ffffffff
+0x00007fffffffd8d0│+0x0038: 0x00007fffffffda18  →  0x00007fffffffda30  →  0x00005555555585b0  →  &lt;__libc_csu_init+0&gt; push r15
+─────────────────────────────────────────────────────────────────── code:x86:64 ────
+   0x555555557271                  mov    esi, 0x100
+   0x555555557276                  mov    rdi, rax
+   0x555555557279                  call   0x555555557070 &lt;fgets@plt&gt;
+ → 0x55555555727e                  mov    rax, QWORD PTR [rbp-0x8]
+   0x555555557282                  lea    rsi, [rip+0x1d7b]        # 0x555555559004
+   0x555555557289                  mov    rdi, rax
+   0x55555555728c                  call   0x555555557090 &lt;strtok@plt&gt;
+   0x555555557291                  mov    rax, QWORD PTR [rbp-0x8]
+   0x555555557295                  leave  
+───────────────────────────────────────────────────────────────────────── trace ────
+[#0] 0x55555555727e → mov rax, QWORD PTR [rbp-0x8]
+[#1] 0x55555556358a → jne 0x5555555632ad
+[#2] 0x7ffff7f91f10 → add BYTE PTR [rax+0x7ffff7b7], al
+────────────────────────────────────────────────────────────────────────────────────
+gef➤  awatch *0x55555556e670
+Hardware access (read/write) watchpoint 3: *0x55555556e670
+gef➤ 
+</code></pre>
+
+<p>Now we have an access watchpoint on the buffer the password was read into.
+Whenever the program tries to do anything with it, the debugger will interrupt it.</p>
+
+<p>But one other thing is noteworthy here:
+The disassembly above is the code that makes the call to <code>fgets</code>.
+It is located in the memory range where the challenge binary was loaded,
+but it was definitely not part of the binary on disk or at startup time.</p>
+
+<p>This is the whole function now:</p>
+
+<pre><code>gef➤  x/30i 0x555555557220
+   0x555555557220:	mov    rbp,rsp
+   0x555555557223:	sub    rsp,0x10
+   0x555555557227:	mov    eax,0x0
+   0x55555555722c:	call   0x55555555823f &lt;tohtaapixohliboifuje+190&gt;
+   0x555555557231:	mov    edi,0x100
+   0x555555557236:	call   0x555555557080 &lt;malloc@plt&gt;
+   0x55555555723b:	mov    QWORD PTR [rbp-0x8],rax
+   0x55555555723f:	mov    rax,QWORD PTR [rbp-0x8]
+   0x555555557243:	mov    edx,0x100
+   0x555555557248:	mov    esi,0x0
+   0x55555555724d:	mov    rdi,rax
+   0x555555557250:	call   0x555555557060 &lt;memset@plt&gt;
+   0x555555557255:	cmp    QWORD PTR [rbp-0x8],0x0
+   0x55555555725a:	jne    0x555555557266
+   0x55555555725c:	mov    edi,0xffffffff
+   0x555555557261:	call   0x5555555570a0 &lt;exit@plt&gt;
+   0x555555557266:	mov    rdx,QWORD PTR [rip+0x3da3]        # 0x55555555b010 &lt;stdin@@GLIBC_2.2.5&gt;
+   0x55555555726d:	mov    rax,QWORD PTR [rbp-0x8]
+   0x555555557271:	mov    esi,0x100
+   0x555555557276:	mov    rdi,rax
+   0x555555557279:	call   0x555555557070 &lt;fgets@plt&gt;
+=&gt; 0x55555555727e:	mov    rax,QWORD PTR [rbp-0x8]
+   0x555555557282:	lea    rsi,[rip+0x1d7b]        # 0x555555559004
+   0x555555557289:	mov    rdi,rax
+   0x55555555728c:	call   0x555555557090 &lt;strtok@plt&gt;
+   0x555555557291:	mov    rax,QWORD PTR [rbp-0x8]
+   0x555555557295:	leave  
+   0x555555557296:	ret    
+   0x555555557297:	lea    rax,[rip+0x15daa]        # 0x55555556d048
+   0x55555555729e:	pop    rbx
+gef➤  
+</code></pre>
+
+<p>And this is how the same code looked at the start of the program:</p>
+
+<pre><code>gef➤  x/30i 0x555555557220
+   0x555555557220:	lea    eax,[rip+0x15dea]        # 0x55555556d010
+   0x555555557226:	pop    rbx
+   0x555555557227:	push   rax
+   0x555555557228:	push   rbx
+   0x555555557229:	jmp    0x555555563000
+   0x55555555722e:	add    BYTE PTR [rax],bh
+   0x555555557230:	imul   esp,edx,0x37ee45b6
+   0x555555557236:	push   0x36
+   0x555555557238:	jge    0x555555557219
+   0x55555555723a:	iret   
+   0x55555555723b:	jae    0x5555555572b9
+   0x55555555723d:	loop   0x55555555724b
+   0x55555555723f:	(bad)  
+   0x555555557240:	mov    edx,0x9354d72e
+   0x555555557245:	xor    al,bl
+   0x555555557247:	or     ah,BYTE PTR [rdi+0x27bb8526]
+   0x55555555724d:	in     eax,dx
+   0x55555555724e:	cmps   BYTE PTR ds:[rsi],BYTE PTR es:[rdi]
+   0x55555555724f:	(bad)  
+   0x555555557250:	(bad)  
+   0x555555557251:	loopne 0x55555555729a
+   0x555555557253:	xchg   esp,eax
+   0x555555557254:	out    0xb1,al
+   0x555555557256:	xor    ebx,ebx
+   0x555555557258:	cmp    ebp,DWORD PTR [rdi+0x79]
+   0x55555555725b:	sbb    ch,ah
+   0x55555555725d:	add    al,0xd6
+   0x55555555725f:	(bad)  
+   0x555555557260:	or     al,0xf0
+   0x555555557262:	retf 
+</code></pre>
+
+<p>This is definitely not the same code; in fact, it&rsquo;s not code at all (except the first five instructions):
+this is what it looks like if you try to disassemble random bytes.</p>
+
+<p>If you didn&rsquo;t already know you are dealing with some form of self-modifying code, this would have been your hint.</p>
+
+<p>But back to the password in memory (guarded by the watchpoint):
+If we let the process continue, the watchpoint will be hit in <code>strtok</code>:</p>
+
+<pre><code>gef➤  c
+Continuing.
+
+Hardware access (read/write) watchpoint 3: *0x55555556e670
+
+Value = 0x6f6f6f66
+0x00007ffff7c3d125 in __GI___strtok_r (s=0x55555556e670 &quot;fooooooooo\n&quot;, delim=0x555555559004 &quot;\n&quot;, save_ptr=0x7ffff7d86728 &lt;olds&gt;) at strtok_r.c:49
+49	strtok_r.c: Datei oder Verzeichnis nicht gefunden.
+[ Legend: Modified register | Code | Heap | Stack | String ]
+───────────────────────────────────────────────────────────────────── registers ────
+$rax   : 0x000055555556e670  →  &quot;fooooooooo&quot;
+$rbx   : 0x000055555556e670  →  &quot;fooooooooo&quot;
+$rcx   : 0xfbad2288        
+$rdx   : 0x00007ffff7d86728  →  0x0000000000000000
+$rsp   : 0x00007fffffffd878  →  0x0000555555557231  →   mov edi, 0x100
+$rbp   : 0x00007ffff7d86728  →  0x0000000000000000
+$rsi   : 0x0000555555559004  →  0x25000a73250a000a
+$rdi   : 0x000055555556e670  →  &quot;fooooooooo&quot;
+$rip   : 0x00007ffff7c3d125  →  &lt;strtok_r+21&gt; je 0x7ffff7c3d160 &lt;__GI___strtok_r+80&gt;
+$r8    : 0x000055555556e78b  →  0x0000000000000000
+$r9    : 0x00007ffff7b76b80  →  0x00007ffff7b76b80  →  [loop detected]
+$r10   : 0x00007ffff7d83ca0  →  0x000055555556eb80  →  0x0000000000000000
+$r11   : 0x246             
+$r12   : 0x0000555555559004  →  0x25000a73250a000a
+$r13   : 0x00007fffffffdb10  →  0x0000000000000001
+$r14   : 0x0               
+$r15   : 0x0               
+$eflags: [zero carry PARITY adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000 
+───────────────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffd878│+0x0000: 0x0000555555557231  →   mov edi, 0x100	 ← $rsp
+0x00007fffffffd880│+0x0008: 0x00007fffffffd8b0  →  0x00007fffffffd950  →  0x00007fffffffd978  →  0x00007fffffffda18  →  0x00007fffffffda30  →  0x00005555555585b0  →  &lt;__libc_csu_init+0&gt; push r15
+0x00007fffffffd888│+0x0010: 0x00005555555570c0  →  &lt;_start+0&gt; xor ebp, ebp
+0x00007fffffffd890│+0x0018: 0x0000555555557291  →   mov rax, QWORD PTR [rbp-0x8]
+0x00007fffffffd898│+0x0020: 0x000055555556d160  →  0x000000000000adc1
+0x00007fffffffd8a0│+0x0028: 0x00007fffffffd920  →  0x0000008f24e9b100
+0x00007fffffffd8a8│+0x0030: 0x000055555556e670  →  &quot;fooooooooo&quot;
+0x00007fffffffd8b0│+0x0038: 0x00007fffffffd950  →  0x00007fffffffd978  →  0x00007fffffffda18  →  0x00007fffffffda30  →  0x00005555555585b0  →  &lt;__libc_csu_init+0&gt; push r15
+─────────────────────────────────────────────────────────────────── code:x86:64 ────
+   0x7ffff7c3d11d &lt;strtok_r+13&gt;    test   rdi, rdi
+   0x7ffff7c3d120 &lt;strtok_r+16&gt;    je     0x7ffff7c3d170 &lt;__GI___strtok_r+96&gt;
+   0x7ffff7c3d122 &lt;strtok_r+18&gt;    cmp    BYTE PTR [rbx], 0x0
+ → 0x7ffff7c3d125 &lt;strtok_r+21&gt;    je     0x7ffff7c3d160 &lt;__GI___strtok_r+80&gt;	NOT taken [Reason: !(Z)]
+   0x7ffff7c3d127 &lt;strtok_r+23&gt;    mov    rdi, rbx
+   0x7ffff7c3d12a &lt;strtok_r+26&gt;    mov    rsi, r12
+   0x7ffff7c3d12d &lt;strtok_r+29&gt;    call   0x7ffff7bc40b0 &lt;*ABS*+0x9d720@plt&gt;
+   0x7ffff7c3d132 &lt;strtok_r+34&gt;    add    rbx, rax
+   0x7ffff7c3d135 &lt;strtok_r+37&gt;    cmp    BYTE PTR [rbx], 0x0
+───────────────────────────────────────────────────────────────────────── trace ────
+[#0] 0x7ffff7c3d125 → __GI___strtok_r(s=0x55555556e670 &quot;fooooooooo\n&quot;, delim=0x555555559004 &quot;\n&quot;, save_ptr=0x7ffff7d86728 &lt;olds&gt;)
+[#1] 0x555555557291 → mov rax, QWORD PTR [rbp-0x8]
+[#2] 0x55555556358a → jne 0x5555555632ad
+[#3] 0x7ffff7f91f10 → add BYTE PTR [rax+0x7ffff7b7], al
+────────────────────────────────────────────────────────────────────────────────────
+gef➤  
+</code></pre>
+
+<p>The most interesting line is this one:</p>
+
+<pre><code>0x00007ffff7c3d125 in __GI___strtok_r (s=0x55555556e670 &quot;fooooooooo\n&quot;, delim=0x555555559004 &quot;\n&quot;, save_ptr=0x7ffff7d86728 &lt;olds&gt;) at strtok_r.c:49
+</code></pre>
+
+<p><code>strtok</code> is call with &ldquo;\n&rdquo; as delimiter.
+So it will search the string for the first newline character, replace it with 0x00, and return a pointer to the byte immediately after that.
+Since that is already past the input given, the <code>strtok</code> call serves only to strip away the trailing newline character from the password.
+It will continue to create a lot of watchpoint hits, so it&rsquo;s best to disable the watchpoint, let <code>strtok</code> finish its work, and enable it again.</p>
+
+<pre><code>gef➤  disable 3
+gef➤  finish
+Run till exit from #0  0x00007ffff7c3d125 in __GI___strtok_r (s=0x55555556e670 &quot;fooooooooo\n&quot;, delim=0x555555559004 &quot;\n&quot;, save_ptr=0x7ffff7d86728 &lt;olds&gt;) at strtok_r.c:49
+0x0000555555557291 in ?? ()
+Value returned is $2 = 0x55555556e670 &quot;fooooooooo&quot;
+
+[...]
+
+─────────────────────────────────────────────────────────────────── code:x86:64 ────
+   0x555555557282                  lea    rsi, [rip+0x1d7b]        # 0x555555559004
+   0x555555557289                  mov    rdi, rax
+   0x55555555728c                  call   0x555555557090 &lt;strtok@plt&gt;
+ → 0x555555557291                  mov    rax, QWORD PTR [rbp-0x8]
+   0x555555557295                  leave  
+   0x555555557296                  ret    
+   0x555555557297                  lea    rax, [rip+0x15daa]        # 0x55555556d048
+   0x55555555729e                  pop    rbx
+   0x55555555729f                  push   rax
+───────────────────────────────────────────────────────────────────────── trace ────
+[#0] 0x555555557291 → mov rax, QWORD PTR [rbp-0x8]
+[#1] 0x55555556358a → jne 0x5555555632ad
+[#2] 0x7ffff7f91f10 → add BYTE PTR [rax+0x7ffff7b7], al
+────────────────────────────────────────────────────────────────────────────────────
+gef➤  enable 3
+gef➤  
+</code></pre>
+
+<p>The next time the watchpoint triggers seems more interesting:</p>
+
+<pre><code>gef➤  c
+Continuing.
+
+Hardware access (read/write) watchpoint 3: *0x55555556e670
+
+Value = 0x6f6f6f66
+0x00005555555581ba in tohtaapixohliboifuje ()
+__main__:2274: DeprecationWarning: invalid escape sequence '\'
+[ Legend: Modified register | Code | Heap | Stack | String ]
+───────────────────────────────────────────────────────────────────── registers ────
+$rax   : 0x66              
+$rbx   : 0x000055555555819d  →  &lt;tohtaapixohliboifuje+28&gt; mov QWORD PTR [rbp-0x8], rax
+$rcx   : 0x0000555555564318  →   je 0x55555556406a
+$rdx   : 0x0               
+$rsp   : 0x00007fffffffd880  →  0x000055555556d048  →  0x000000000000bd69
+$rbp   : 0x00007fffffffd8a8  →  0x00007fffffffd948  →  0x00007fffffffd978  →  0x00007fffffffda18  →  0x00007fffffffda30  →  0x00005555555585b0  →  &lt;__libc_csu_init+0&gt; push r15
+$rsi   : 0x1e7             
+$rdi   : 0x0000555555558000  →  &lt;ahngashifaisuethooqu+1810&gt; push rbx
+$rip   : 0x00005555555581ba  →  &lt;tohtaapixohliboifuje+57&gt; movsx rdx, al
+$r8    : 0x000055555556d0d8  →  0xa2c4a414b4a63d61
+$r9    : 0x00007ffff7b76b80  →  0x00007ffff7b76b80  →  [loop detected]
+$r10   : 0x00007ffff7d83ca0  →  0x000055555556ec90  →  0x0000000000000000
+$r11   : 0x206             
+$r12   : 0x00005555555570c0  →  &lt;_start+0&gt; xor ebp, ebp
+$r13   : 0x00007fffffffdb10  →  0x0000000000000001
+$r14   : 0x0               
+$r15   : 0x0               
+$eflags: [zero carry parity adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000 
+───────────────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffd880│+0x0000: 0x000055555556d048  →  0x000000000000bd69	 ← $rsp
+0x00007fffffffd888│+0x0008: 0x0000555555563b01  →   jne 0x5555555648d8
+0x00007fffffffd890│+0x0010: 0x000055555556e670  →  &quot;fooooooooo&quot;
+0x00007fffffffd898│+0x0018: 0x000000005556d0f0
+0x00007fffffffd8a0│+0x0020: 0x000055555556eb90  →  0x48264660e7e20a93
+0x00007fffffffd8a8│+0x0028: 0x00007fffffffd948  →  0x00007fffffffd978  →  0x00007fffffffda18  →  0x00007fffffffda30  →  0x00005555555585b0  →  &lt;__libc_csu_init+0&gt; push r15	 ← $rbp
+0x00007fffffffd8b0│+0x0030: 0x000055555556358a  →   jne 0x5555555632ad
+0x00007fffffffd8b8│+0x0038: 0x000055555556d010  →  0x000000000000bde1
+─────────────────────────────────────────────────────────────────── code:x86:64 ────
+   0x5555555581af &lt;tohtaapixohliboifuje+46&gt; ror    BYTE PTR [rax-0x75], 1
+   0x5555555581b2 &lt;tohtaapixohliboifuje+49&gt; rex.RB call 0x555565258300
+   0x5555555581b8 &lt;tohtaapixohliboifuje+55&gt; mov    dh, 0x0
+ → 0x5555555581ba &lt;tohtaapixohliboifuje+57&gt; movsx  rdx, al
+   0x5555555581be &lt;tohtaapixohliboifuje+61&gt; mov    rax, QWORD PTR [rbp-0x8]
+   0x5555555581c2 &lt;tohtaapixohliboifuje+65&gt; add    rax, rdx
+   0x5555555581c5 &lt;tohtaapixohliboifuje+68&gt; mov    edx, DWORD PTR [rbp-0xc]
+   0x5555555581c8 &lt;tohtaapixohliboifuje+71&gt; movsxd rcx, edx
+   0x5555555581cb &lt;tohtaapixohliboifuje+74&gt; mov    rdx, QWORD PTR [rbp-0x18]
+───────────────────────────────────────────────────────────────────────── trace ────
+[#0] 0x5555555581ba → tohtaapixohliboifuje()
+[#1] 0x55555556358a → jne 0x5555555632ad
+[#2] 0x55555556d010 → loope 0x55555556cfcf
+[#3] 0x55555556e670 → outs dx, WORD PTR ds:[rsi]
+────────────────────────────────────────────────────────────────────────────────────
+gef➤  
+</code></pre>
+
+<p>The disassembly here is misleading:
+gef tried to disassemble the instruction flow backward from the current position (<code>0x5555555581ba</code>). Disassembling backward sometimes goes wrong on architectures with variable instruction length (like x86-64).
+This becomes obvious once we start disassembling the whole function:</p>
+
+<pre><code>gef➤  x/30i 0x555555558188
+   0x555555558188 &lt;tohtaapixohliboifuje+7&gt;:	mov    rbp,rsp
+   0x55555555818b &lt;tohtaapixohliboifuje+10&gt;:	sub    rsp,0x20
+   0x55555555818f &lt;tohtaapixohliboifuje+14&gt;:	mov    QWORD PTR [rbp-0x18],rdi
+   0x555555558193 &lt;tohtaapixohliboifuje+18&gt;:	mov    eax,0x0
+   0x555555558198 &lt;tohtaapixohliboifuje+23&gt;:	call   0x555555557297
+   0x55555555819d &lt;tohtaapixohliboifuje+28&gt;:	mov    QWORD PTR [rbp-0x8],rax
+   0x5555555581a1 &lt;tohtaapixohliboifuje+32&gt;:	mov    DWORD PTR [rbp-0xc],0x0
+   0x5555555581a8 &lt;tohtaapixohliboifuje+39&gt;:	jmp    0x5555555581db &lt;tohtaapixohliboifuje+90&gt;
+   0x5555555581aa &lt;tohtaapixohliboifuje+41&gt;:	mov    eax,DWORD PTR [rbp-0xc]
+   0x5555555581ad &lt;tohtaapixohliboifuje+44&gt;:	movsxd rdx,eax
+   0x5555555581b0 &lt;tohtaapixohliboifuje+47&gt;:	mov    rax,QWORD PTR [rbp-0x18]
+   0x5555555581b4 &lt;tohtaapixohliboifuje+51&gt;:	add    rax,rdx
+   0x5555555581b7 &lt;tohtaapixohliboifuje+54&gt;:	movzx  eax,BYTE PTR [rax]
+=&gt; 0x5555555581ba &lt;tohtaapixohliboifuje+57&gt;:	movsx  rdx,al
+   0x5555555581be &lt;tohtaapixohliboifuje+61&gt;:	mov    rax,QWORD PTR [rbp-0x8]
+   0x5555555581c2 &lt;tohtaapixohliboifuje+65&gt;:	add    rax,rdx
+   0x5555555581c5 &lt;tohtaapixohliboifuje+68&gt;:	mov    edx,DWORD PTR [rbp-0xc]
+   0x5555555581c8 &lt;tohtaapixohliboifuje+71&gt;:	movsxd rcx,edx
+   0x5555555581cb &lt;tohtaapixohliboifuje+74&gt;:	mov    rdx,QWORD PTR [rbp-0x18]
+   0x5555555581cf &lt;tohtaapixohliboifuje+78&gt;:	add    rdx,rcx
+   0x5555555581d2 &lt;tohtaapixohliboifuje+81&gt;:	movzx  eax,BYTE PTR [rax]
+   0x5555555581d5 &lt;tohtaapixohliboifuje+84&gt;:	mov    BYTE PTR [rdx],al
+   0x5555555581d7 &lt;tohtaapixohliboifuje+86&gt;:	add    DWORD PTR [rbp-0xc],0x1
+   0x5555555581db &lt;tohtaapixohliboifuje+90&gt;:	cmp    DWORD PTR [rbp-0xc],0xff
+   0x5555555581e2 &lt;tohtaapixohliboifuje+97&gt;:	jle    0x5555555581aa &lt;tohtaapixohliboifuje+41&gt;
+   0x5555555581e4 &lt;tohtaapixohliboifuje+99&gt;:	nop
+   0x5555555581e5 &lt;tohtaapixohliboifuje+100&gt;:	leave  
+   0x5555555581e6 &lt;tohtaapixohliboifuje+101&gt;:	ret    
+   0x5555555581e7 &lt;tohtaapixohliboifuje+102&gt;:	lea    rax,[rip+0x14f3a]        # 0x55555556d128
+   0x5555555581ee &lt;tohtaapixohliboifuje+109&gt;:	pop    rbx
+</code></pre>
+
+<p>So the instruction that triggered the watchpoint was:</p>
+
+<pre><code>   0x5555555581b7 &lt;tohtaapixohliboifuje+54&gt;:	movzx  eax,BYTE PTR [rax]
+</code></pre>
+
+<p>When looking at the function, the loop between <code>0x5555555581aa</code> and <code>0x5555555581e2</code> sticks out.
+What is happening here?</p>
+
+<p>When you iterate though it a few times and check the values, you will find out this:</p>
+
+<ul>
+<li>It&rsquo;s a for loop with a loop counter at <code>[rbp-0xc]</code>, which was initialised to 0 at <code>0x5555555581a1</code>. The counter is incremented (at <code>0x5555555581d7</code>) until it reaches <code>0xff</code> (<code>0x5555555581db</code>)</li>
+<li>A pointer to the password buffer is at <code>[rbp-0x18]</code></li>
+<li>A pointer to an array of values is stored at <code>[rbp-0x8]</code></li>
+<li>In each iteration, a byte from the password buffer is fetched (<code>0x5555555581b7</code>, the operation that triggered the watchpoint)</li>
+<li>This byte is used as an index into the value table (<code>0x5555555581d2</code>)</li>
+<li>That value is written back to the password buffer, replacing the original password byte (<code>0x5555555581d5</code>)</li>
+<li>This happens for all 256 bytes of the password buffer</li>
+</ul>
+
+<p>So what does the array at <code>[rbp-0x8]</code> look like? It&rsquo;s a table with 256 values, from <code>0x00</code> to <code>0xff</code>, randomly arranged.</p>
+
+<pre><code>gef➤  x/a $rbp-8
+0x7fffffffd8a0:	0x55555556eb90
+gef➤  x/256bx 0x55555556eb90
+0x55555556eb90:	0x93	0x0a	0xe2	0xe7	0x60	0x46	0x26	0x48
+0x55555556eb98:	0xd8	0x68	0x91	0x8a	0x71	0xac	0x47	0x0e
+0x55555556eba0:	0xcd	0x78	0x53	0x8e	0xda	0x9c	0x43	0xc3
+0x55555556eba8:	0xc1	0xb6	0xdc	0x17	0x54	0xa6	0xc5	0x1a
+0x55555556ebb0:	0x1b	0xe0	0x87	0xa2	0x06	0x30	0xcc	0xdb
+0x55555556ebb8:	0x9f	0xd4	0x2e	0xbf	0x7c	0xce	0x3a	0xe3
+0x55555556ebc0:	0x8b	0xa7	0x92	0xed	0x36	0x28	0x51	0x23
+0x55555556ebc8:	0x29	0x04	0x63	0x45	0xf1	0x81	0xb0	0xbe
+0x55555556ebd0:	0xbd	0x90	0xd2	0xe8	0x88	0x70	0x16	0xa5
+0x55555556ebd8:	0x67	0x31	0x08	0xb2	0x7b	0x99	0x39	0xfa
+0x55555556ebe0:	0xf2	0x65	0x6b	0x5b	0xf6	0xe4	0xe6	0x8c
+0x55555556ebe8:	0xb1	0x25	0x33	0x75	0xc6	0x44	0xc2	0xc7
+0x55555556ebf0:	0xc0	0x8f	0x4e	0xc4	0xca	0xfd	0xbc	0xb3
+0x55555556ebf8:	0xff	0x0b	0xa8	0x57	0xf4	0xe9	0xde	0x6f
+0x55555556ec00:	0x49	0x5d	0x0f	0x83	0x62	0x21	0x59	0xe5
+0x55555556ec08:	0x34	0xea	0x86	0x11	0x3c	0x41	0xf9	0x00
+0x55555556ec10:	0x6a	0x5c	0x52	0x5a	0x1c	0x95	0x4a	0x24
+0x55555556ec18:	0xd3	0xba	0x9b	0x94	0x1e	0x2d	0xa4	0x1d
+0x55555556ec20:	0x96	0xa0	0x15	0xf7	0x20	0x09	0x77	0xdf
+0x55555556ec28:	0xf0	0x7e	0xb9	0x12	0x4d	0x2f	0xef	0x58
+0x55555556ec30:	0xaf	0x2b	0xa3	0x6c	0x3b	0x3e	0x2c	0x64
+0x55555556ec38:	0x38	0x4f	0xdd	0xd0	0x5f	0xec	0x4b	0x89
+0x55555556ec40:	0x7d	0xee	0xfc	0xcb	0xb7	0x01	0x50	0xb4
+0x55555556ec48:	0x3d	0x76	0xf8	0x97	0x03	0x4c	0x6e	0x79
+0x55555556ec50:	0x27	0xbb	0x14	0xfe	0x0d	0x72	0xe1	0x80
+0x55555556ec58:	0x05	0x0c	0x55	0xfb	0x18	0x9d	0xab	0x2a
+0x55555556ec60:	0xa9	0xd9	0x19	0xd7	0xb8	0x6d	0x9a	0xd1
+0x55555556ec68:	0x85	0x40	0x69	0x73	0xd5	0xeb	0x7f	0xad
+0x55555556ec70:	0x61	0xd6	0x9e	0x3f	0x02	0x07	0x22	0xa1
+0x55555556ec78:	0x84	0x1f	0x8d	0xf3	0xc8	0x82	0xb5	0x42
+0x55555556ec80:	0x5e	0x66	0x35	0x10	0xaa	0xae	0xcf	0x74
+0x55555556ec88:	0x13	0x7a	0x56	0x98	0xf5	0x32	0x37	0xc9
+gef➤  
+</code></pre>
+
+<p>So the function substitutes each value in the original password with an other value from the table, like a simple monoalphabetic cipher.
+Better save the substitution table for later use.</p>
+
+<pre><code>gef➤  dump memory tabledump.bin 0x55555556eb90 0x55555556ec90 
+gef➤  
+</code></pre>
+
+<p>As the password is encrypted in place (and not written to another buffer), we can continue to use the memory watchpoint.
+But just as with <code>strtok</code>, we should disable it until the function is done, because it will be triggered more than 500 times during the encryption process.</p>
+
+<pre><code>gef➤  disable 3
+gef➤  finish 
+Run till exit from #0  0x00005555555581d7 in tohtaapixohliboifuje ()
+0x000055555556358a in ?? ()
+[...]
+gef➤  enable 3
+gef➤  c
+Continuing.
+
+Hardware access (read/write) watchpoint 3: *0x55555556e670
+
+Value = 0x6f6f6fbc
+0x0000555555558216 in tohtaapixohliboifuje ()
+[ Legend: Modified register | Code | Heap | Stack | String ]
+───────────────────────────────────────────────────────────────────────────────── registers ────
+$rax   : 0x000055555556e670  →  0x6f6f6f6f6f6f6fbc
+$rbx   : 0x00005555555581e7  →  &lt;tohtaapixohliboifuje+102&gt; push rbp
+$rcx   : 0xbc              
+$rdx   : 0x0               
+$rsp   : 0x00007fffffffd898  →  0x00007fffffffd938  →  0x00007fffffffd978  →  0x00007fffffffda18  →  0x00007fffffffda30  →  0x00005555555585b0  →  &lt;__libc_csu_init+0&gt; push r15
+$rbp   : 0x00007fffffffd898  →  0x00007fffffffd938  →  0x00007fffffffd978  →  0x00007fffffffda18  →  0x00007fffffffda30  →  0x00005555555585b0  →  &lt;__libc_csu_init+0&gt; push r15
+$rsi   : 0x000055555556eca0  →  0x16f6e888e8996b99
+$rdi   : 0x000055555556e670  →  0x6f6f6f6f6f6f6fbc
+$rip   : 0x0000555555558216  →  &lt;tohtaapixohliboifuje+149&gt; mov eax, DWORD PTR [rbp-0x4]
+$r8    : 0x000055555556d110  →  0x73cbe86189951598
+$r9    : 0x00007ffff7b76b80  →  0x00007ffff7b76b80  →  [loop detected]
+$r10   : 0x00007ffff7d83ca0  →  0x000055555556eda0  →  0x0000000000000000
+$r11   : 0x216             
+$r12   : 0x00005555555570c0  →  &lt;_start+0&gt; xor ebp, ebp
+$r13   : 0x00007fffffffdb10  →  0x0000000000000001
+$r14   : 0x0               
+$r15   : 0x0               
+$eflags: [zero carry parity adjust sign trap INTERRUPT direction overflow resume virtualx86 identification]
+$cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000 
+───────────────────────────────────────────────────────────────────────────────────── stack ────
+0x00007fffffffd898│+0x0000: 0x00007fffffffd938  →  0x00007fffffffd978  →  0x00007fffffffda18  →  0x00007fffffffda30  →  0x00005555555585b0  →  &lt;__libc_csu_init+0&gt; push r15	 ← $rsp, $rbp
+0x00007fffffffd8a0│+0x0008: 0x000055555556358a  →   jne 0x5555555632ad
+0x00007fffffffd8a8│+0x0010: 0x000055555556d080  →  0x000000000000b5f1
+0x00007fffffffd8b0│+0x0018: 0x000055555556d0b8  →  0x000000000000ae79
+0x00007fffffffd8b8│+0x0020: 0x000055555556d010  →  0x000000000000bde1
+0x00007fffffffd8c0│+0x0028: 0x000055555556e670  →  0x6f6f6f6f6f6f6fbc
+0x00007fffffffd8c8│+0x0030: 0x000055555556eca0  →  0x16f6e888e8996b99
+0x00007fffffffd8d0│+0x0038: 0x00007fffffffda18  →  0x00007fffffffda30  →  0x00005555555585b0  →  &lt;__libc_csu_init+0&gt; push r15
+─────────────────────────────────────────────────────────────────────────────── code:x86:64 ────
+   0x55555555820b &lt;tohtaapixohliboifuje+138&gt; ror    BYTE PTR [rax-0x75], 1
+   0x55555555820e &lt;tohtaapixohliboifuje+141&gt; rex.RB call 0x55556525835c
+   0x555555558214 &lt;tohtaapixohliboifuje+147&gt; mov    dh, 0x8
+ → 0x555555558216 &lt;tohtaapixohliboifuje+149&gt; mov    eax, DWORD PTR [rbp-0x4]
+   0x555555558219 &lt;tohtaapixohliboifuje+152&gt; movsxd rdx, eax
+   0x55555555821c &lt;tohtaapixohliboifuje+155&gt; mov    rax, QWORD PTR [rbp-0x20]
+   0x555555558220 &lt;tohtaapixohliboifuje+159&gt; add    rax, rdx
+   0x555555558223 &lt;tohtaapixohliboifuje+162&gt; movzx  eax, BYTE PTR [rax]
+   0x555555558226 &lt;tohtaapixohliboifuje+165&gt; xor    eax, ecx
+───────────────────────────────────────────────────────────────────────────────────── trace ────
+[#0] 0x555555558216 → tohtaapixohliboifuje()
+[#1] 0x55555556358a → jne 0x5555555632ad
+[#2] 0x55555556d080 → icebp 
+[#3] 0x55555556d0b8 → jns 0x55555556d068
+[#4] 0x55555556d010 → loope 0x55555556cfcf
+[#5] 0x55555556e670 → mov esp, 0x6f6f6f6f
+[#6] 0x55555556eca0 → cdq 
+[#7] 0x7fffffffda18 → xor dl, bl
+[#8] 0x7ffff7b76b80 → sub BYTE PTR [rbx-0x49], 0xf7
+[#9] 0x55555556d110 → cwde 
+────────────────────────────────────────────────────────────────────────────────────────────────
+gef➤  
+</code></pre>
+
+<p>Here&rsquo;s the next time the (now encrypted) password is used.
+And again, the backward disassembling fails.
+This is the whole function:</p>
+
+<pre><code>gef➤  x/30i 0x5555555581e7
+   0x5555555581e7 &lt;tohtaapixohliboifuje+102&gt;:	push   rbp
+   0x5555555581e8 &lt;tohtaapixohliboifuje+103&gt;:	mov    rbp,rsp
+   0x5555555581eb &lt;tohtaapixohliboifuje+106&gt;:	mov    QWORD PTR [rbp-0x18],rdi
+   0x5555555581ef &lt;tohtaapixohliboifuje+110&gt;:	mov    QWORD PTR [rbp-0x20],rsi
+   0x5555555581f3 &lt;tohtaapixohliboifuje+114&gt;:	mov    DWORD PTR [rbp-0x24],edx
+   0x5555555581f6 &lt;tohtaapixohliboifuje+117&gt;:	mov    DWORD PTR [rbp-0x8],0x0
+   0x5555555581fd &lt;tohtaapixohliboifuje+124&gt;:	mov    DWORD PTR [rbp-0x4],0x0
+   0x555555558204 &lt;tohtaapixohliboifuje+131&gt;:	jmp    0x555555558232 &lt;tohtaapixohliboifuje+177&gt;
+   0x555555558206 &lt;tohtaapixohliboifuje+133&gt;:	mov    eax,DWORD PTR [rbp-0x4]
+   0x555555558209 &lt;tohtaapixohliboifuje+136&gt;:	movsxd rdx,eax
+   0x55555555820c &lt;tohtaapixohliboifuje+139&gt;:	mov    rax,QWORD PTR [rbp-0x18]
+   0x555555558210 &lt;tohtaapixohliboifuje+143&gt;:	add    rax,rdx
+   0x555555558213 &lt;tohtaapixohliboifuje+146&gt;:	movzx  ecx,BYTE PTR [rax]
+=&gt; 0x555555558216 &lt;tohtaapixohliboifuje+149&gt;:	mov    eax,DWORD PTR [rbp-0x4]
+   0x555555558219 &lt;tohtaapixohliboifuje+152&gt;:	movsxd rdx,eax
+   0x55555555821c &lt;tohtaapixohliboifuje+155&gt;:	mov    rax,QWORD PTR [rbp-0x20]
+   0x555555558220 &lt;tohtaapixohliboifuje+159&gt;:	add    rax,rdx
+   0x555555558223 &lt;tohtaapixohliboifuje+162&gt;:	movzx  eax,BYTE PTR [rax]
+   0x555555558226 &lt;tohtaapixohliboifuje+165&gt;:	xor    eax,ecx
+   0x555555558228 &lt;tohtaapixohliboifuje+167&gt;:	movsx  eax,al
+   0x55555555822b &lt;tohtaapixohliboifuje+170&gt;:	or     DWORD PTR [rbp-0x8],eax
+   0x55555555822e &lt;tohtaapixohliboifuje+173&gt;:	add    DWORD PTR [rbp-0x4],0x1
+   0x555555558232 &lt;tohtaapixohliboifuje+177&gt;:	mov    eax,DWORD PTR [rbp-0x4]
+   0x555555558235 &lt;tohtaapixohliboifuje+180&gt;:	cmp    DWORD PTR [rbp-0x24],eax
+   0x555555558238 &lt;tohtaapixohliboifuje+183&gt;:	ja     0x555555558206 &lt;tohtaapixohliboifuje+133&gt;
+   0x55555555823a &lt;tohtaapixohliboifuje+185&gt;:	mov    eax,DWORD PTR [rbp-0x8]
+   0x55555555823d &lt;tohtaapixohliboifuje+188&gt;:	pop    rbp
+   0x55555555823e &lt;tohtaapixohliboifuje+189&gt;:	ret    
+   0x55555555823f &lt;tohtaapixohliboifuje+190&gt;:	lea    rax,[rip+0x14f1a]        # 0x55555556d160
+   0x555555558246 &lt;tohtaapixohliboifuje+197&gt;:	pop    rbx
+gef➤  
+</code></pre>
+
+<p>And again the access (at <code>0x555555558213</code>) happens inside a loop (<code>0x555555558206</code> to <code>0x555555558238</code>).</p>
+
+<p>By looking at the values and single stepping, you can analyse it again:</p>
+
+<ul>
+<li>The loop counter is at <code>[rbp-0x4]</code> this time</li>
+<li>A pointer to the start of the password buffer is at <code>[rbp-0x18]</code></li>
+<li>There is some other byte string at <code>[rbp-0x20]</code>
+On each iteration, a byte from the password buffer and the other byte string are read (at <code>0x555555558213</code> and <code>0x555555558223</code> respectively).
+The values are then xor&rsquo;rd (at <code>0x555555558226</code>) and the result is or&rsquo;rd to <code>[rbp-0x8]</code>.</li>
+</ul>
+
+<p>That means that if both arrays of values are identical, at the end <code>[rbp-0x8]</code> will be <code>0x00</code>.
+In any other case, it will be something else.</p>
+
+<p>Well, if that isn&rsquo;t most interesting!</p>
+
+<p>Lets take a close look at this array (and save it for later):</p>
+
+<pre><code>gef➤  x/a $rbp-0x20
+0x7fffffffd878:	0x55555556eca0
+gef➤  x/256bx 0x55555556eca0
+0x55555556eca0:	0x99	0x6b	0x99	0xe8	0x88	0xe8	0xf6	0x16
+0x55555556eca8:	0x11	0xea	0x6f	0x21	0xc7	0xa8	0x21	0x83
+0x55555556ecb0:	0x62	0xc7	0xff	0x8f	0x59	0xfd	0xc7	0x4e
+0x55555556ecb8:	0xfd	0x8f	0x62	0xfd	0xde	0xc7	0x62	0xff
+0x55555556ecc0:	0xfd	0xc7	0xbc	0x0b	0xde	0x8f	0xf4	0xc7
+0x55555556ecc8:	0x4e	0x6f	0x83	0x83	0x41	0x93	0x93	0x93
+0x55555556ecd0:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ecd8:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ece0:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ece8:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ecf0:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ecf8:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed00:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed08:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed10:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed18:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed20:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed28:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed30:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed38:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed40:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed48:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed50:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed58:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed60:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed68:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed70:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed78:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed80:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed88:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed90:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+0x55555556ed98:	0x93	0x93	0x93	0x93	0x93	0x93	0x93	0x93
+gef➤  dump memory flagdump.bin 0x55555556eca0 0x55555556ed98
+gef➤  
+</code></pre>
+
+<p>This is definitely not a plain flag.
+But remember: the password was encrypted with the substitution cipher.
+So the encrypted password will be compared to an encrypted flag.</p>
+
+<p>And as we already have the substitution table save, we just need some python script to undo the substitution the flag.
+Here we go:</p>
+
+<pre><code>#!/usr/bin/env python
+
+table = [
+  0x93, 0x0a, 0xe2, 0xe7, 0x60, 0x46, 0x26, 0x48, 0xd8, 0x68, 0x91, 0x8a,
+  0x71, 0xac, 0x47, 0x0e, 0xcd, 0x78, 0x53, 0x8e, 0xda, 0x9c, 0x43, 0xc3,
+  0xc1, 0xb6, 0xdc, 0x17, 0x54, 0xa6, 0xc5, 0x1a, 0x1b, 0xe0, 0x87, 0xa2,
+  0x06, 0x30, 0xcc, 0xdb, 0x9f, 0xd4, 0x2e, 0xbf, 0x7c, 0xce, 0x3a, 0xe3,
+  0x8b, 0xa7, 0x92, 0xed, 0x36, 0x28, 0x51, 0x23, 0x29, 0x04, 0x63, 0x45,
+  0xf1, 0x81, 0xb0, 0xbe, 0xbd, 0x90, 0xd2, 0xe8, 0x88, 0x70, 0x16, 0xa5,
+  0x67, 0x31, 0x08, 0xb2, 0x7b, 0x99, 0x39, 0xfa, 0xf2, 0x65, 0x6b, 0x5b,
+  0xf6, 0xe4, 0xe6, 0x8c, 0xb1, 0x25, 0x33, 0x75, 0xc6, 0x44, 0xc2, 0xc7,
+  0xc0, 0x8f, 0x4e, 0xc4, 0xca, 0xfd, 0xbc, 0xb3, 0xff, 0x0b, 0xa8, 0x57,
+  0xf4, 0xe9, 0xde, 0x6f, 0x49, 0x5d, 0x0f, 0x83, 0x62, 0x21, 0x59, 0xe5,
+  0x34, 0xea, 0x86, 0x11, 0x3c, 0x41, 0xf9, 0x00, 0x6a, 0x5c, 0x52, 0x5a,
+  0x1c, 0x95, 0x4a, 0x24, 0xd3, 0xba, 0x9b, 0x94, 0x1e, 0x2d, 0xa4, 0x1d,
+  0x96, 0xa0, 0x15, 0xf7, 0x20, 0x09, 0x77, 0xdf, 0xf0, 0x7e, 0xb9, 0x12,
+  0x4d, 0x2f, 0xef, 0x58, 0xaf, 0x2b, 0xa3, 0x6c, 0x3b, 0x3e, 0x2c, 0x64,
+  0x38, 0x4f, 0xdd, 0xd0, 0x5f, 0xec, 0x4b, 0x89, 0x7d, 0xee, 0xfc, 0xcb,
+  0xb7, 0x01, 0x50, 0xb4, 0x3d, 0x76, 0xf8, 0x97, 0x03, 0x4c, 0x6e, 0x79,
+  0x27, 0xbb, 0x14, 0xfe, 0x0d, 0x72, 0xe1, 0x80, 0x05, 0x0c, 0x55, 0xfb,
+  0x18, 0x9d, 0xab, 0x2a, 0xa9, 0xd9, 0x19, 0xd7, 0xb8, 0x6d, 0x9a, 0xd1,
+  0x85, 0x40, 0x69, 0x73, 0xd5, 0xeb, 0x7f, 0xad, 0x61, 0xd6, 0x9e, 0x3f,
+  0x02, 0x07, 0x22, 0xa1, 0x84, 0x1f, 0x8d, 0xf3, 0xc8, 0x82, 0xb5, 0x42,
+  0x5e, 0x66, 0x35, 0x10, 0xaa, 0xae, 0xcf, 0x74, 0x13, 0x7a, 0x56, 0x98,
+  0xf5, 0x32, 0x37, 0xc9 ]
+
+flag = [
+  0x99, 0x6b, 0x99, 0xe8, 0x88, 0xe8, 0xf6, 0x16, 0x11, 0xea, 0x6f, 0x21,
+  0xc7, 0xa8, 0x21, 0x83, 0x62, 0xc7, 0xff, 0x8f, 0x59, 0xfd, 0xc7, 0x4e,
+  0xfd, 0x8f, 0x62, 0xfd, 0xde, 0xc7, 0x62, 0xff, 0xfd, 0xc7, 0xbc, 0x0b,
+  0xde, 0x8f, 0xf4, 0xc7, 0x4e, 0x6f, 0x83, 0x83, 0x41, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93,
+  0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93, 0x93 ]
+
+plain = &quot;&quot;
+for c in flag:
+    p = chr(table.index(c))
+    plain += p
+
+print(plain)
+</code></pre>
+
+<p>I&rsquo;ll leave you the honour of running it yourself (SPOILER: it prints the flag!).</p>
+
+<p>In the next post, I will explain how to undo the obfuscation and recover the original code.</p>
+<ul class="pa0">
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/mrmcdctf2019" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">MRMCDCTF2019</a>
+   </li>
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/ctf" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">CTF</a>
+   </li>
+  
+</ul>
+<div class="mt6">
+        
+      </div>
+    </section>
+
+    <aside class="w-30-l mt6-l"><div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">What&#39;s in this posts</p>
+      <nav id="TableOfContents">
+<ul>
+<li>
+<ul>
+<li><a href="#solution-to-elizevc-very-hard-from-mrmcdctf-2019">Solution to ElizeVC (very hard) from MRMCDCTF 2019</a>
+<ul>
+<li>
+<ul>
+<li><a href="#protections">Protections</a></li>
+</ul></li>
+<li><a href="#solution">Solution:</a>
+<ul>
+<li><a href="#solving-the-anti-debugger-check">Solving the Anti-Debugger check</a></li>
+<li><a href="#solution-1-follow-the-data">Solution 1: Follow the data</a></li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+  </div>
+
+
+
+
+  <div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">Related</p>
+    <ul class="pa0 list">
+	   
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-carbonara/">MRMCDCTF2019: Carbonara</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-misguided/">MRMCDCTF2019: Misguided</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-konradvc/">MRMCDCTF2019: KonradVC</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/">MRMCDCTF2019: Cereal</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-hopping_machine/">MRMCDCTF2019: Hopping machine</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-slicer/">MRMCDCTF2019: Slicer</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-sitting_duck/">MRMCDCTF2019: Sitting duck</a>
+        </li>
+	    
+    </ul>
+</div>
+
+</aside>
+
+  </article>
+
+    </main>
+    <footer class="bg-navy bottom-0 w-100 pa3" role="contentinfo">
+  <div class="flex justify-between">
+  <a class="f4 fw4 hover-white no-underline white-70 dn dib-ns pv2 ph3" href="https://schlafwandler.github.io" >
+    &copy; 2019 Pointers to the void
+  </a>
+    <div>
+
+
+
+
+
+
+
+
+
+
+</div>
+  </div>
+</footer>
+
+    
+
+  <script src="https://schlafwandler.github.io/dist/js/app.3fc0f988d21662902933.js"></script>
+
+
+  </body>
+</html>
