@@ -48,7 +48,7 @@ Protections The binary of this challenge is protected with various methods:
 
 <meta itemprop="datePublished" content="2019-10-28T21:22:51&#43;02:00" />
 <meta itemprop="dateModified" content="2019-10-28T21:22:51&#43;02:00" />
-<meta itemprop="wordCount" content="4750">
+<meta itemprop="wordCount" content="4762">
 
 
 
@@ -172,7 +172,7 @@ crypter/uncrypter system.</p>
 
 <p>There are two intended solutions:
 the first one solves the challenge with the protections in place, while the second approach is to undo the encryption and (more or less) reconstruct the original binary.
-I will focus on the the first way here, and save the &lsquo;reconstruct the binary&rsquo; solution for an other post.</p>
+I will focus on the the first way here, and save the &lsquo;reconstruct the binary&rsquo; solution for another post.</p>
 
 <p>Both ways rely on getting around the anti-debugger protection, so this is the first thing we will do.</p>
 
@@ -201,7 +201,7 @@ Speicherzugriffsfehler
 <p>The ptrace check here can not be patched out
 (neither on disk nor in memory) without breaking the checksum
 (which results in faulty decryption).
-When you try to do this, you only will end up with a binary that&rsquo;s not running, no matter whether a debugger is present or not.</p>
+When you try to do this, you will only end up with a binary that&rsquo;s not running, no matter whether a debugger is present or not.</p>
 
 <p>However the ptrace syscall can be intercepted by the debugger and its
 return value changed:</p>
@@ -280,7 +280,7 @@ Breakpoint 2, _IO_fgets (buf=0x55555556e670 &quot;&quot;, n=0x100, fp=0x7ffff7d8
 <p>Success!
 The program has now executed past the point where it displays the &ldquo;What is the password?&rdquo; message and is trying the get the password from the user.</p>
 
-<p>We can now finish <code>fgets</code>, and then set an access watchpoint on the read buffer (0x55555556e670, see the &lsquo;Breakpoint 2&rsquo;-line).</p>
+<p>We can now let <code>fgets</code> finish, and then set an access watchpoint on the read buffer (0x55555556e670, see the &lsquo;Breakpoint 2&rsquo;-line).</p>
 
 <pre><code>gef➤  finish
 Run till exit from #0  _IO_fgets (buf=0x55555556e670 &quot;&quot;, n=0x100, fp=0x7ffff7d83a00 &lt;_IO_2_1_stdin_&gt;) at iofgets.c:37
@@ -338,7 +338,7 @@ gef➤
 </code></pre>
 
 <p>Now we have an access watchpoint on the buffer the password was read into.
-Whenever the program tries to do anything with it, the debugger will interrupt it.</p>
+Whenever the program tries to do anything with it, the debugger will step in.</p>
 
 <p>But one other thing is noteworthy here:
 The disassembly above is the code that makes the call to <code>fgets</code>.
@@ -626,7 +626,7 @@ What is happening here?</p>
 
 <ul>
 <li>It&rsquo;s a for loop with a loop counter at <code>[rbp-0xc]</code>, which was initialised to 0 at <code>0x5555555581a1</code>. The counter is incremented (at <code>0x5555555581d7</code>) until it reaches <code>0xff</code> (<code>0x5555555581db</code>)</li>
-<li>A pointer to the password buffer is at <code>[rbp-0x18]</code></li>
+<li>A pointer to the password buffer can be found at <code>[rbp-0x18]</code></li>
 <li>A pointer to an array of values is stored at <code>[rbp-0x8]</code></li>
 <li>In each iteration, a byte from the password buffer is fetched (<code>0x5555555581b7</code>, the operation that triggered the watchpoint)</li>
 <li>This byte is used as an index into the value table (<code>0x5555555581d2</code>)</li>
@@ -674,7 +674,7 @@ gef➤  x/256bx 0x55555556eb90
 gef➤  
 </code></pre>
 
-<p>So the function substitutes each value in the original password with an other value from the table, like a simple monoalphabetic cipher.
+<p>So the function substitutes each value in the original password with another value from the table, like a simple monoalphabetic cipher.
 Better save the substitution table for later use.</p>
 
 <pre><code>gef➤  dump memory tabledump.bin 0x55555556eb90 0x55555556ec90 
@@ -797,10 +797,12 @@ gef➤
 <ul>
 <li>The loop counter is at <code>[rbp-0x4]</code> this time</li>
 <li>A pointer to the start of the password buffer is at <code>[rbp-0x18]</code></li>
-<li>There is some other byte string at <code>[rbp-0x20]</code>
-On each iteration, a byte from the password buffer and the other byte string are read (at <code>0x555555558213</code> and <code>0x555555558223</code> respectively).
-The values are then xor&rsquo;rd (at <code>0x555555558226</code>) and the result is or&rsquo;rd to <code>[rbp-0x8]</code>.</li>
+<li>There is some other byte string at <code>[rbp-0x20]</code></li>
 </ul>
+
+<p>On each iteration, a byte from the password buffer and the other byte string are read (at <code>0x555555558213</code> and <code>0x555555558223</code>, respectively).
+The values are then xor&rsquo;rd (at <code>0x555555558226</code>) and the result is or&rsquo;rd to <code>[rbp-0x8]</code> (at <code>0x55555555822b</code>).
+<code>[rbp-0x8]</code> itself was initialised to 0 (at <code>0x5555555581f6</code>).</p>
 
 <p>That means that if both arrays of values are identical, at the end <code>[rbp-0x8]</code> will be <code>0x00</code>.
 In any other case, it will be something else.</p>
@@ -852,7 +854,7 @@ gef➤
 But remember: the password was encrypted with the substitution cipher.
 So the encrypted password will be compared to an encrypted flag.</p>
 
-<p>And as we already have the substitution table save, we just need some python script to undo the substitution the flag.
+<p>And as we already have the substitution table saved, we just need some python script to undo the substitution of the flag.
 Here we go:</p>
 
 <pre><code>#!/usr/bin/env python
