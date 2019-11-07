@@ -48,7 +48,7 @@ This changes once we take at look at main, which decompiles to this:">
 
 <meta itemprop="datePublished" content="2019-09-26T23:38:04&#43;02:00" />
 <meta itemprop="dateModified" content="2019-09-26T23:38:04&#43;02:00" />
-<meta itemprop="wordCount" content="1634">
+<meta itemprop="wordCount" content="1629">
 
 
 
@@ -397,13 +397,12 @@ And the other one will be the correct flag, xor&rsquo;ed with 0x41.</p>
 [...]
 69 commands loaded for GDB 8.2.91.20190405-git using Python engine 3.7
 [*] 4 commands could not be loaded, run `gef missing` to know why.
-[+] Configuration from '/home/justus/.gef.rc' restored
 Reading symbols from ./misguided...
 (No debugging symbols found in ./misguided)
 gef➤  b memcmp
 Haltepunkt 1 at 0x1060
 gef➤  r
-Starting program: /media/truecrypt1/ctf/2019_mrmcd/MRMCD2019/reversing/misguided/downloads/misguided 
+Starting program: misguided 
 [Thread debugging using libthread_db enabled]
 Using host libthread_db library &quot;/lib/x86_64-linux-gnu/libthread_db.so.1&quot;.
 The password is the flag. What is the password?

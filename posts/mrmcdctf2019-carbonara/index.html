@@ -274,7 +274,7 @@ GNU gdb (Ubuntu 8.2.91.20190405-0ubuntu3) 8.2.91.20190405-git
 gef➤  b fgets
 Haltepunkt 1 at 0x1620
 gef➤  r
-Starting program: /media/truecrypt1/ctf/2019_mrmcd/MRMCD2019/reversing/carbonara/downloads/carbonara 
+Starting program: carbonara 
 [Thread debugging using libthread_db enabled]
 Using host libthread_db library &quot;/lib/x86_64-linux-gnu/libthread_db.so.1&quot;.
 The password is the flag. What is the password?
@@ -284,14 +284,14 @@ Breakpoint 1, _IO_fgets (buf=0x7fffffffd990 &quot;z\357\377\377\377\177&quot;, n
 __main__:2274: DeprecationWarning: invalid escape sequence '\ç'
 [ Legend: Modified register | Code | Heap | Stack | String ]
 ──────────────────────────────────────────────────────────── registers ────
-$rax   : 0x00007fffffffd990  →  0x00007fffffffef7a  →  &quot;/home/justus/MRMCD2019/reversing/carbonara&quot;
+$rax   : 0x00007fffffffd990  →  0x00007fffffffef7a  →  &quot;carbonara&quot;
 $rbx   : 0x0               
 $rcx   : 0x00007ffff7cac024  →  0x5477fffff0003d48 (&quot;H=&quot;?)
 $rdx   : 0x00007ffff7d83a00  →  0x00000000fbad2088
 $rsp   : 0x00007fffffffd958  →  0x00005555559571c1  →   je 0x5555559571ca
 $rbp   : 0x00007fffffffda20  →  0x0000555555555890  →  &lt;__libc_csu_init+0&gt; push r15
 $rsi   : 0x80              
-$rdi   : 0x00007fffffffd990  →  0x00007fffffffef7a  →  &quot;/home/justus/MRMCD2019/reversing/carbonara&quot;
+$rdi   : 0x00007fffffffd990  →  0x00007fffffffef7a  →  &quot;carbonara&quot;
 $rip   : 0x00007ffff7c21100  →  &lt;fgets+0&gt; test esi, esi
 $r8    : 0x0               
 $r9    : 0x5d              
@@ -311,7 +311,7 @@ $cs: 0x0033 $ss: 0x002b $ds: 0x0000 $es: 0x0000 $fs: 0x0000 $gs: 0x0000
 0x00007fffffffd978│+0x0020: 0xa3a7b4a4a1b4b1a8
 0x00007fffffffd980│+0x0028: 0x0042bfb6b5a3a8ad
 0x00007fffffffd988│+0x0030: 0x00007ffff7b7fbfb  →  &lt;__pthread_initialize_minimal+875&gt; mov rax, QWORD PTR [rsp+0xc8]
-0x00007fffffffd990│+0x0038: 0x00007fffffffef7a  →  &quot;/home/justus/MRMCD2019/reversing/carbonara&quot;	 ← $rax, $rdi
+0x00007fffffffd990│+0x0038: 0x00007fffffffef7a  →  &quot;carbonara&quot;	 ← $rax, $rdi
 ────────────────────────────────────────────────────────── code:x86:64 ────
    0x7ffff7c210f4 &lt;fgetpos64+388&gt;  mov    rsi, rax
    0x7ffff7c210f7 &lt;fgetpos64+391&gt;  jmp    0x7ffff7bc46f8 &lt;_IO_new_fgetpos+4294588296&gt;
