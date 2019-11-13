@@ -6,10 +6,20 @@
     <description>Recent content in Mrmcdctf2019 Solutions on Pointers to the void</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 28 Oct 2019 21:22:51 +0200</lastBuildDate>
+    <lastBuildDate>Wed, 13 Nov 2019 22:10:51 +0200</lastBuildDate>
     
 	<atom:link href="https://schlafwandler.github.io/series/mrmcdctf2019-solutions/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>MRMCDCTF2019: ElizeVC Uncrypter</title>
+      <link>https://schlafwandler.github.io/posts/mrmcdctf2019-elizevc-uncrypter/</link>
+      <pubDate>Wed, 13 Nov 2019 22:10:51 +0200</pubDate>
+      
+      <guid>https://schlafwandler.github.io/posts/mrmcdctf2019-elizevc-uncrypter/</guid>
+      <description>Solution to ElizeVC (Part II): Reconstructing the original binary This is the second part of the solution to ElizeVC, one of my challenges for this years MRMCDCTF. In the first part I explained how to get the flag without actually attacking the crypter. Here I will focus on how to defeat the protector and reconstruct the original binary (at least the interesting parts) from the encrypted file.
+The Protection The protector encrypts every function on its own (as opposed to, for example, the complete .</description>
+    </item>
     
     <item>
       <title>MRMCDCTF2019: ElizeVC</title>

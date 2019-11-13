@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    
+    <title>Pointers to the void  | MRMCDCTF2019: ElizeVC Uncrypter</title>
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+
+    <meta name="viewport" content="width=device-width,minimum-scale=1">
+    <meta name="generator" content="Hugo 0.52" />
+    
+    
+      <META NAME="ROBOTS" CONTENT="INDEX, FOLLOW">
+    
+
+    
+    
+      <link href="https://schlafwandler.github.io/dist/css/app.d98f2eb6bcd1eaedb7edf166bd16af26.css" rel="stylesheet">
+    
+
+    
+
+    
+      
+    
+
+    <meta content="CTF, capture the flag, linux, binary, gdb, gdb python, gdb scripting, gef, ghidra, reversing, obfuscation, crypter, protector" name="keywords">
+    <meta content=" - " property="og:description">
+
+    
+
+    <meta property="og:title" content="MRMCDCTF2019: ElizeVC Uncrypter" />
+<meta property="og:description" content="Solution to ElizeVC (Part II): Reconstructing the original binary This is the second part of the solution to ElizeVC, one of my challenges for this years MRMCDCTF. In the first part I explained how to get the flag without actually attacking the crypter. Here I will focus on how to defeat the protector and reconstruct the original binary (at least the interesting parts) from the encrypted file.
+The Protection The protector encrypts every function on its own (as opposed to, for example, the complete ." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://schlafwandler.github.io/posts/mrmcdctf2019-elizevc-uncrypter/" /><meta property="article:published_time" content="2019-11-13T22:10:51&#43;02:00"/>
+<meta property="article:modified_time" content="2019-11-13T22:10:51&#43;02:00"/>
+
+
+<meta itemprop="name" content="MRMCDCTF2019: ElizeVC Uncrypter">
+<meta itemprop="description" content="Solution to ElizeVC (Part II): Reconstructing the original binary This is the second part of the solution to ElizeVC, one of my challenges for this years MRMCDCTF. In the first part I explained how to get the flag without actually attacking the crypter. Here I will focus on how to defeat the protector and reconstruct the original binary (at least the interesting parts) from the encrypted file.
+The Protection The protector encrypts every function on its own (as opposed to, for example, the complete .">
+
+
+<meta itemprop="datePublished" content="2019-11-13T22:10:51&#43;02:00" />
+<meta itemprop="dateModified" content="2019-11-13T22:10:51&#43;02:00" />
+<meta itemprop="wordCount" content="3462">
+
+
+
+<meta itemprop="keywords" content="MRMCDCTF2019,CTF,GDB scripting," />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="MRMCDCTF2019: ElizeVC Uncrypter"/>
+<meta name="twitter:description" content="Solution to ElizeVC (Part II): Reconstructing the original binary This is the second part of the solution to ElizeVC, one of my challenges for this years MRMCDCTF. In the first part I explained how to get the flag without actually attacking the crypter. Here I will focus on how to defeat the protector and reconstruct the original binary (at least the interesting parts) from the encrypted file.
+The Protection The protector encrypts every function on its own (as opposed to, for example, the complete ."/>
+
+      
+    
+  </head>
+
+  <body class="ma0 avenir bg-near-white">
+
+    
+   
+  
+
+  <header>
+    <div class="bg-navy">
+      <nav class="pv3 ph3 ph4-ns" role="navigation">
+  <div class="flex-l justify-between items-center center">
+    <a href="https://schlafwandler.github.io" class="f3 fw2 hover-white no-underline white-90 dib">
+      Pointers to the void
+    </a>
+    <div class="flex-l items-center">
+      
+
+      
+        <ul class="pl0 mr3">
+          
+          <li class="list f5 f4-ns fw4 dib pr3">
+            <a class="hover-white no-underline white-90" href="https://schlafwandler.github.io/tags/" title=" page">
+              
+            </a>
+          </li>
+          
+        </ul>
+      
+      
+
+
+
+<a href="https://twitter.com/wallpecker" target="_blank" class="link-transition twitter link dib z-999 pt3 pt0-l mr1" title="Twitter link" rel="noopener" aria-label="follow on Twitter——Opens in a new window">
+  <svg height="32px"  style="enable-background:new 0 0 67 67;" version="1.1" viewBox="0 0 67 67" width="32px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M37.167,22.283c-2.619,0.953-4.274,3.411-4.086,6.101  l0.063,1.038l-1.048-0.127c-3.813-0.487-7.145-2.139-9.974-4.915l-1.383-1.377l-0.356,1.017c-0.754,2.267-0.272,4.661,1.299,6.271  c0.838,0.89,0.649,1.017-0.796,0.487c-0.503-0.169-0.943-0.296-0.985-0.233c-0.146,0.149,0.356,2.076,0.754,2.839  c0.545,1.06,1.655,2.097,2.871,2.712l1.027,0.487l-1.215,0.021c-1.173,0-1.215,0.021-1.089,0.467  c0.419,1.377,2.074,2.839,3.918,3.475l1.299,0.444l-1.131,0.678c-1.676,0.976-3.646,1.526-5.616,1.568  C19.775,43.256,19,43.341,19,43.405c0,0.211,2.557,1.397,4.044,1.864c4.463,1.377,9.765,0.783,13.746-1.568  c2.829-1.673,5.657-5,6.978-8.221c0.713-1.716,1.425-4.851,1.425-6.354c0-0.975,0.063-1.102,1.236-2.267  c0.692-0.678,1.341-1.419,1.467-1.631c0.21-0.403,0.188-0.403-0.88-0.043c-1.781,0.636-2.033,0.551-1.152-0.402  c0.649-0.678,1.425-1.907,1.425-2.267c0-0.063-0.314,0.042-0.671,0.233c-0.377,0.212-1.215,0.53-1.844,0.72l-1.131,0.361l-1.027-0.7  c-0.566-0.381-1.361-0.805-1.781-0.932C39.766,21.902,38.131,21.944,37.167,22.283z M33,64C16.432,64,3,50.569,3,34S16.432,4,33,4  s30,13.431,30,30S49.568,64,33,64z" style="fill-rule:evenodd;clip-rule:evenodd;fill:;"/></svg>
+
+<span class="new-window"><svg  height="8px"  style="enable-background:new 0 0 1000 1000;" version="1.1" viewBox="0 0 1000 1000" width="8px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >
+<path d="M598 128h298v298h-86v-152l-418 418-60-60 418-418h-152v-86zM810 810v-298h86v298c0 46-40 86-86 86h-596c-48 0-86-40-86-86v-596c0-46 38-86 86-86h298v86h-298v596h596z" style="fill-rule:evenodd;clip-rule:evenodd;fill:;"/>
+</svg>
+</span></a>
+
+
+
+
+
+<a href="https://github.com/schlafwandler" target="_blank" class="link-transition github link dib z-999 pt3 pt0-l mr1" title="Github link" rel="noopener" aria-label="follow on Github——Opens in a new window">
+  <svg  height="32px"  style="enable-background:new 0 0 512 512;" version="1.1" viewBox="0 0 512 512" width="32px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >
+  <path d="M256,32C132.3,32,32,134.8,32,261.7c0,101.5,64.2,187.5,153.2,217.9c11.2,2.1,15.3-5,15.3-11.1   c0-5.5-0.2-19.9-0.3-39.1c-62.3,13.9-75.5-30.8-75.5-30.8c-10.2-26.5-24.9-33.6-24.9-33.6c-20.3-14.3,1.5-14,1.5-14   c22.5,1.6,34.3,23.7,34.3,23.7c20,35.1,52.4,25,65.2,19.1c2-14.8,7.8-25,14.2-30.7c-49.7-5.8-102-25.5-102-113.5   c0-25.1,8.7-45.6,23-61.6c-2.3-5.8-10-29.2,2.2-60.8c0,0,18.8-6.2,61.6,23.5c17.9-5.1,37-7.6,56.1-7.7c19,0.1,38.2,2.6,56.1,7.7   c42.8-29.7,61.5-23.5,61.5-23.5c12.2,31.6,4.5,55,2.2,60.8c14.3,16.1,23,36.6,23,61.6c0,88.2-52.4,107.6-102.3,113.3   c8,7.1,15.2,21.1,15.2,42.5c0,30.7-0.3,55.5-0.3,63c0,6.1,4,13.3,15.4,11C415.9,449.1,480,363.1,480,261.7   C480,134.8,379.7,32,256,32z"/>
+</svg>
+
+<span class="new-window"><svg  height="8px"  style="enable-background:new 0 0 1000 1000;" version="1.1" viewBox="0 0 1000 1000" width="8px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >
+<path d="M598 128h298v298h-86v-152l-418 418-60-60 418-418h-152v-86zM810 810v-298h86v298c0 46-40 86-86 86h-596c-48 0-86-40-86-86v-596c0-46 38-86 86-86h298v86h-298v596h596z" style="fill-rule:evenodd;clip-rule:evenodd;fill:;"/>
+</svg>
+</span></a>
+
+
+
+
+
+    </div>
+  </div>
+</nav>
+
+    </div>
+  </header>
+
+
+
+    <main class="pb7" role="main">
+      
+  
+  <article class="flex-l flex-wrap justify-between mw8 center ph3">
+
+    <header class="mt4 w-100">
+      <p class="f6 b helvetica tracked">
+          
+        POSTS
+      </p>
+      <h1 class="f1 athelas mb1">MRMCDCTF2019: ElizeVC Uncrypter</h1>
+      
+      <time class="f6 mv4 dib tracked" datetime="2019-11-13T22:10:51&#43;02:00">November 13, 2019</time>      
+      
+      
+    </header>
+
+    <section class="nested-copy-line-height lh-copy serif f4 nested-links nested-img mid-gray pr4-l w-two-thirds-l">
+
+<h2 id="solution-to-elizevc-part-ii-reconstructing-the-original-binary">Solution to ElizeVC (Part II): Reconstructing the original binary</h2>
+
+<p>This is the second part of the solution to <a href="https://github.com/schlafwandler/CTF-challenges/tree/master/MRMCDCTF-2019/reversing/ElizeVC">ElizeVC</a>, one of my challenges for this years MRMCDCTF.
+In the <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-elizevc/">first part</a> I explained how to get the flag without actually attacking the crypter.
+Here I will focus on how to defeat the protector and reconstruct the original binary (at least the interesting parts) from the encrypted file.</p>
+
+<h4 id="the-protection">The Protection</h4>
+
+<p>The protector encrypts every function on its own (as opposed to, for example, the complete <code>.text</code> segment).
+Once a protected function is entered, a small code stub redirects execution to the decryption code.
+This code decrypts the function at its original location and calls it.
+Upon return, the function is encrypted again.</p>
+
+<p>If a protected function calls another protected function, the decrypter re-encrypts the caller function before decrypting the callee.
+Therefore at any given time there is at most one protected function unencrypted in memory.</p>
+
+<p>There are some other measures in place to make analysing or modifying the decryption stub harder (see <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-elizevc/">part one</a> for details).
+Of interest here is only the <code>ptrace</code> based debugger check, which can be disabled with a syscall catchpoint.</p>
+
+<pre><code>gef➤  catch syscall ptrace
+Abfangpunkt 1 (syscall 'ptrace' [101])
+gef➤  commands
+Type commands for breakpoint(s) 1, one per line.
+End with a line saying just &quot;end&quot;.
+&gt;set $rax = 0
+&gt;c
+&gt;end
+</code></pre>
+
+<h2 id="manual-dumping">Manual dumping</h2>
+
+<p>In <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-elizevc/">part one</a> we already stumbled upon various unencrypeted functions using breakpoints and memory watchpoints.
+We will now look for a more systematic way to search for them, staring at <code>main</code>.</p>
+
+<p>The <code>main</code> of the elize binary is quite simple:</p>
+
+<p><img src="https://schlafwandler.github.io/img/mrmcdctf2019-elizeVC-ghidra-main.png" alt="Main in ghidra" /></p>
+
+<pre><code>undefined8 main(void)
+{
+  FUN_001031ba();
+  return 0;
+}
+</code></pre>
+
+<p>The function <code>FUN_001031ba</code> is different:</p>
+
+<p><img src="https://schlafwandler.github.io/img/mrmcdctf2019-elizeVC-ghidra-FUN_001031ba.png" alt="FUN_001031ba in ghidra" /></p>
+
+<p>The decompiler output here is misleading:
+in the disassembler windows we see that the there are only five instructions followed by data.
+The decompiler misinterprets the jump as a continuation of the function, and tries to decompile the (obfuscated) decrypter.</p>
+
+<p>But we have seen these five instructions before:
+in Part One we found out that a function, that on disk and at startup looks like this:</p>
+
+<pre><code>gef➤  x/30i 0x555555557220
+   0x555555557220:	lea    eax,[rip+0x15dea]        # 0x55555556d010
+   0x555555557226:	pop    rbx
+   0x555555557227:	push   rax
+   0x555555557228:	push   rbx
+   0x555555557229:	jmp    0x555555563000
+   0x55555555722e:	add    BYTE PTR [rax],bh
+   0x555555557230:	imul   esp,edx,0x37ee45b6
+   0x555555557236:	push   0x36
+   0x555555557238:	jge    0x555555557219
+   0x55555555723a:	iret   
+   0x55555555723b:	jae    0x5555555572b9
+   0x55555555723d:	loop   0x55555555724b
+   0x55555555723f:	(bad)  
+[...]
+</code></pre>
+
+<p>&hellip;at some later time turns to this:</p>
+
+<pre><code>gef➤  x/30i 0x555555557220
+   0x555555557220:	mov    rbp,rsp
+   0x555555557223:	sub    rsp,0x10
+   0x555555557227:	mov    eax,0x0
+   0x55555555722c:	call   0x55555555823f &lt;tohtaapixohliboifuje+190&gt;
+   0x555555557231:	mov    edi,0x100
+   0x555555557236:	call   0x555555557080 &lt;malloc@plt&gt;
+   0x55555555723b:	mov    QWORD PTR [rbp-0x8],rax
+   0x55555555723f:	mov    rax,QWORD PTR [rbp-0x8]
+[...]
+</code></pre>
+
+<p>So it&rsquo;s not a far fetched guess that <code>FUN_001031ba</code> might later on be replaced by a plaintext version of itself.</p>
+
+<p>The logical next step is to set a hardware breakpoint at the first instruction of <code>FUN_001031ba</code> and wait until the decrypted function gets executed.</p>
+
+<p>This is what I do here (much gdb/gef output removed for readability):</p>
+
+<pre><code>user@host$ gdb ./elize 
+GNU gdb (Ubuntu 8.2.91.20190405-0ubuntu3) 8.2.91.20190405-git
+[...]
+gef➤  catch syscall ptrace
+Abfangpunkt 1 (syscall 'ptrace' [101])
+gef➤  commands
+Type commands for breakpoint(s) 1, one per line.
+End with a line saying just &quot;end&quot;.
+&gt;set $rax = 0
+&gt;c
+&gt;end
+
+gef➤  b _start
+Haltepunkt 2 at 0x30c0
+gef➤  r
+[...]
+gef➤  disassemble main
+Dump of assembler code for function main:
+   0x00005555555571a5 &lt;+0&gt;:	push   rbp
+   0x00005555555571a6 &lt;+1&gt;:	mov    rbp,rsp
+   0x00005555555571a9 &lt;+4&gt;:	mov    eax,0x0
+   0x00005555555571ae &lt;+9&gt;:	call   0x5555555571ba
+   0x00005555555571b3 &lt;+14&gt;:	mov    eax,0x0
+   0x00005555555571b8 &lt;+19&gt;:	pop    rbp
+   0x00005555555571b9 &lt;+20&gt;:	ret    
+End of assembler dump.
+gef➤  hbreak *0x5555555571ba
+Hardwaregestützter Haltepunkt 3 at 0x5555555571ba
+gef➤  c
+Continuing.
+[...]
+────────────────────────────────────────────────────────── code:x86:64 ────
+   0x5555555571b2 &lt;main+13&gt;        add    BYTE PTR [rax+0x0], bh
+   0x5555555571b8 &lt;main+19&gt;        pop    rbp
+   0x5555555571b9 &lt;main+20&gt;        ret    
+ → 0x5555555571ba                  lea    rax, [rip+0x15f2f]        # 0x55555556d0f0
+   0x5555555571c1                  pop    rbx
+   0x5555555571c2                  push   rax
+   0x5555555571c3                  push   rbx
+   0x5555555571c4                  jmp    0x555555563000
+   0x5555555571c9                  add    BYTE PTR [rbp+0x3fd3e239], dl
+──────────────────────────────────────────────────────────────── trace ────
+[#0] 0x5555555571ba → lea rax, [rip+0x15f2f]        # 0x55555556d0f0
+[#1] 0x5555555571b3 → main()
+───────────────────────────────────────────────────────────────────────────
+gef➤  c
+Continuing.
+
+Catchpoint 1 (call to syscall ptrace), 0x000055555556323e in ?? ()
+
+Catchpoint 1 (returned from syscall ptrace), 0x000055555556323e in ?? ()
+
+Breakpoint 3, 0x00005555555571ba in ?? ()
+[...]
+────────────────────────────────────────────────────────── code:x86:64 ────
+   0x5555555571b2 &lt;main+13&gt;        add    BYTE PTR [rax+0x0], bh
+   0x5555555571b8 &lt;main+19&gt;        pop    rbp
+   0x5555555571b9 &lt;main+20&gt;        ret    
+ → 0x5555555571ba                  push   rbp
+   0x5555555571bb                  mov    rbp, rsp
+   0x5555555571be                  sub    rsp, 0x10
+   0x5555555571c2                  mov    eax, 0x0
+   0x5555555571c7                  call   0x55555555721f
+   0x5555555571cc                  mov    QWORD PTR [rbp-0x10], rax
+──────────────────────────────────────────────────────────────── trace ────
+[#0] 0x5555555571ba → push rbp
+[#1] 0x55555556358a → jne 0x5555555632ad
+[#2] 0x5555555585b0 → tohtaapixohliboifuje()
+[#3] 0x7ffff7bc5b6b → __libc_start_main(main=0x5555555571a5 &lt;main&gt;, argc=0x1, argv=0x7fffffffdaf8, init=&lt;optimized out&gt;, fini=&lt;optimized out&gt;, rtld_fini=&lt;optimized out&gt;, stack_end=0x5555555571a5 &lt;main&gt;)
+───────────────────────────────────────────────────────────────────────────
+gef➤ 
+</code></pre>
+
+<p>Success!</p>
+
+<p>We have set a hardware breakpoint on <code>FUN_001031ba</code>, and let the program continue.
+At the first hit to the breakpoint the function was still in its encrypted stage.
+But later, at the second hit, we find it in its clear text form.</p>
+
+<p>Here is the complete function:</p>
+
+<pre><code>gef➤  x/28i 0x5555555571ba
+=&gt; 0x5555555571ba:	push   rbp
+   0x5555555571bb:	mov    rbp,rsp
+   0x5555555571be:	sub    rsp,0x10
+   0x5555555571c2:	mov    eax,0x0
+   0x5555555571c7:	call   0x55555555721f
+   0x5555555571cc:	mov    QWORD PTR [rbp-0x10],rax
+   0x5555555571d0:	mov    rax,QWORD PTR [rbp-0x10]
+   0x5555555571d4:	mov    rdi,rax
+   0x5555555571d7:	call   0x555555558187 &lt;tohtaapixohliboifuje+6&gt;
+   0x5555555571dc:	mov    eax,0x0
+   0x5555555571e1:	call   0x555555557a0f &lt;ahngashifaisuethooqu+289&gt;
+   0x5555555571e6:	mov    QWORD PTR [rbp-0x8],rax
+   0x5555555571ea:	mov    rcx,QWORD PTR [rbp-0x8]
+   0x5555555571ee:	mov    rax,QWORD PTR [rbp-0x10]
+   0x5555555571f2:	mov    edx,0x100
+   0x5555555571f7:	mov    rsi,rcx
+   0x5555555571fa:	mov    rdi,rax
+   0x5555555571fd:	call   0x5555555581e7 &lt;tohtaapixohliboifuje+102&gt;
+   0x555555557202:	test   eax,eax
+   0x555555557204:	jne    0x555555557212
+   0x555555557206:	mov    eax,0x0
+   0x55555555720b:	call   0x555555558339 &lt;tohtaapixohliboifuje+440&gt;
+   0x555555557210:	jmp    0x55555555721c
+   0x555555557212:	mov    eax,0x0
+   0x555555557217:	call   0x555555558527 &lt;tohtaapixohliboifuje+934&gt;
+   0x55555555721c:	nop
+   0x55555555721d:	leave  
+   0x55555555721e:	ret 
+</code></pre>
+
+<p>We can now dump this function, and try to replace the encrypted function in the binary file with our decrypted one:</p>
+
+<p>First we dump <code>FUN_001031ba</code> to the file FUN_001031ba.dump.
+Then we get some information about this memory location.</p>
+
+<pre><code>gef➤  dump memory FUN_001031ba.dump 0x5555555571ba 0x55555555721f
+gef➤  xinfo 0x5555555571ba
+────────────────────────── xinfo: 0x5555555571ba ──────────────────────────
+Page: 0x0000555555557000  →  0x0000555555558000 (size=0x1000)
+Permissions: r-x
+Pathname: /[...]/elize
+Offset (from page): 0x1ba
+Inode: 21763258
+Segment: .text (0x00005555555570c0-0x0000555555558611)
+gef➤  vmmap elize
+Start              End                Offset             Perm Path
+0x0000555555554000 0x0000555555557000 0x0000000000000000 r-- /[...]/elize
+0x0000555555557000 0x0000555555558000 0x0000000000003000 r-x /[...]/elize
+0x0000555555558000 0x0000555555559000 0x0000000000004000 r-x /[...]/elize
+0x0000555555559000 0x000055555555a000 0x0000000000005000 r-- /[...]/elize
+0x000055555555a000 0x000055555555b000 0x0000000000005000 r-- /[...]/elize
+0x000055555555b000 0x000055555555c000 0x0000000000006000 rw- /[...]/elize
+0x0000555555563000 0x0000555555565000 0x0000000000007000 r-x /[...]/elize
+0x000055555556d000 0x000055555556e000 0x0000000000009000 rw- /[...]/elize
+</code></pre>
+
+<p>We now have the functions code in a file.
+We also know that the function is at offset <code>0x1ba</code> in page <code>0x555555557000</code>, which is loaded from the file offset <code>0x3000</code>.
+So the function is located at offset <code>0x31ba</code> in the file.</p>
+
+<p>You can get the same information by hovering the mouse over the address in ghidra.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-elizeVC-ghidra-fileoffset.png" alt="Get the fileoffset from ghidra" /></p>
+
+<p>We then copy the dumped function to the right offset of the binary and test it:</p>
+
+<pre><code>user@host$ cp elize elize_fixed_FUN_001031ba 
+user@host$ dd if=FUN_001031ba.dump of=elize_fixed_FUN_001031ba bs=1 count=101 seek=$((0x31ba)) conv=notrunc
+101+0 Datensätze ein
+101+0 Datensätze aus
+101 Bytes kopiert, 0,00136937 s, 73,8 kB/s
+user@host$ ./elize_fixed_FUN_001031ba 
+The password is the flag. What is the password?
+</code></pre>
+
+<p>(The file can be found <a href="https://github.com/schlafwandler/CTF-challenges/blob/master/MRMCDCTF-2019/reversing/ElizeVC/solution/elize_fixed_FUN_001031ba">here</a>)</p>
+
+<p>Since the file with the reconstructed function works just fine, we can infer that there is no further integrity check in the protector.</p>
+
+<p>And ghidra can now decompile the formerly protected function:</p>
+
+<p><img src="https://schlafwandler.github.io/img/mrmcdctf2019-elizeVC-ghidra-FUN_001031ba-decompiled.png" alt="Decompiled FUN_001031ba in ghidra" /></p>
+
+<pre><code>void FUN_001031ba(void)
+{
+  int iVar1;
+  undefined8 uVar2;
+  undefined8 uVar3;
+  
+  uVar2 = FUN_0010321f();
+  FUN_00104187(uVar2);
+  uVar3 = FUN_00103a0f();
+  iVar1 = FUN_001041e7(uVar2,uVar3,0x100,uVar3);
+  if (iVar1 == 0) {
+    FUN_00104339();
+  }
+  else {
+    FUN_00104527();
+  }
+  return;
+}
+</code></pre>
+
+<p>The sad thing is: it does not help us that much.
+It calls some other functions, but all of them are still encrypted.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-elizeVC-ghidra-FUN_0010321f.png" alt="Encrypted FUN_0010321f in ghidra" /></p>
+
+<p>But we have an approach that works on one function, and it can work on all others as well!</p>
+
+<p>Step by step:</p>
+
+<ul>
+<li>Identify a protected function:
+Each protected function starts with five instructions, the last one being <code>JMP LAB_0010f000</code>.
+The rest is just gibberish.</li>
+<li>In the debugger, set a hardware breakpoint on the start of the function.</li>
+<li>When the breakpoint is hit for the first time, the function is still encryped.
+But the stub that&rsquo;s executed now will jump to the decryption routine soon.
+Let the execution continue.</li>
+<li>When the breakpoint is hit for the second time, we now have the decrypted function before us.
+Dump it to a file.</li>
+<li>Get the offset of the function in the file on disk.</li>
+<li>Copy the decrypted function over the encrypted function in the file (using <code>dd</code> or similar tools).</li>
+</ul>
+
+<p>The functions <code>FUN_0010321f</code>, <code>FUN_00104187</code>, <code>FUN_00103a0f</code>, <code>FUN_001041e7</code>, <code>FUN_00104339</code> and <code>FUN_00104527</code> are already visible in the decompiled <code>FUN_001031ba</code>.
+Lets start with <code>FUN_0010321f</code>, located in memory at <code>0x55555555721f</code> (most of the gdb/gef output removed for readability):</p>
+
+<pre><code>user@host:$ gdb ./elize_fixed_FUN_001031ba 
+[...]
+gef➤  catch syscall ptrace
+Abfangpunkt 1 (syscall 'ptrace' [101])
+gef➤  commands 
+Type commands for breakpoint(s) 1, one per line.
+End with a line saying just &quot;end&quot;.
+&gt;set $rax=0
+&gt;c
+&gt;end
+gef➤  start
+[...]
+gef➤  hbreak *0x55555555721f
+Hardwaregestützter Haltepunkt 2 at 0x55555555721f
+gef➤  c
+Continuing.
+
+Breakpoint 2, 0x000055555555721f in ?? ()
+[...]
+─────────────────────────────────────────────────────────────────── code:x86:64 ────
+   0x55555555721c                  nop    
+   0x55555555721d                  leave  
+   0x55555555721e                  ret    
+ → 0x55555555721f                  lea    rax, [rip+0x15dea]        # 0x55555556d010
+   0x555555557226                  pop    rbx
+   0x555555557227                  push   rax
+   0x555555557228                  push   rbx
+   0x555555557229                  jmp    0x555555563000
+   0x55555555722e                  add    BYTE PTR [rax], bh
+───────────────────────────────────────────────────────────────────────── trace ────
+[#0] 0x55555555721f → lea rax, [rip+0x15dea]        # 0x55555556d010
+[#1] 0x5555555571cc → mov QWORD PTR [rbp-0x10], rax
+[#2] 0x5555555571b3 → main()
+────────────────────────────────────────────────────────────────────────────────────
+gef➤  c
+Continuing.
+
+Catchpoint 1 (call to syscall ptrace), 0x000055555556323e in ?? ()
+
+Catchpoint 1 (returned from syscall ptrace), 0x000055555556323e in ?? ()
+
+Breakpoint 2, 0x000055555555721f in ?? ()
+[...]
+─────────────────────────────────────────────────────────────────── code:x86:64 ────
+   0x55555555721c                  nop    
+   0x55555555721d                  leave  
+   0x55555555721e                  ret    
+ → 0x55555555721f                  push   rbp
+   0x555555557220                  mov    rbp, rsp
+   0x555555557223                  sub    rsp, 0x10
+   0x555555557227                  mov    eax, 0x0
+   0x55555555722c                  call   0x55555555823f &lt;tohtaapixohliboifuje+190&gt;
+   0x555555557231                  mov    edi, 0x100
+───────────────────────────────────────────────────────────────────────── trace ────
+[#0] 0x55555555721f → push rbp
+[#1] 0x55555556358a → jne 0x5555555632ad
+[#2] 0x5555555585b0 → tohtaapixohliboifuje()
+[#3] 0x5555555570c0 → xor ebp, ebp
+[#4] 0x7fffffffdac0 → mov al, 0x85
+[#5] 0x5555555571b3 → main()
+────────────────────────────────────────────────────────────────────────────────────
+gef➤  x/30i 0x55555555721f
+=&gt; 0x55555555721f:	push   rbp
+   0x555555557220:	mov    rbp,rsp
+   0x555555557223:	sub    rsp,0x10
+   0x555555557227:	mov    eax,0x0
+   0x55555555722c:	call   0x55555555823f &lt;tohtaapixohliboifuje+190&gt;
+   0x555555557231:	mov    edi,0x100
+   0x555555557236:	call   0x555555557080 &lt;malloc@plt&gt;
+   0x55555555723b:	mov    QWORD PTR [rbp-0x8],rax
+   0x55555555723f:	mov    rax,QWORD PTR [rbp-0x8]
+   0x555555557243:	mov    edx,0x100
+   0x555555557248:	mov    esi,0x0
+   0x55555555724d:	mov    rdi,rax
+   0x555555557250:	call   0x555555557060 &lt;memset@plt&gt;
+   0x555555557255:	cmp    QWORD PTR [rbp-0x8],0x0
+   0x55555555725a:	jne    0x555555557266
+   0x55555555725c:	mov    edi,0xffffffff
+   0x555555557261:	call   0x5555555570a0 &lt;exit@plt&gt;
+   0x555555557266:	mov    rdx,QWORD PTR [rip+0x3da3]        # 0x55555555b010 &lt;stdin@@GLIBC_2.2.5&gt;
+   0x55555555726d:	mov    rax,QWORD PTR [rbp-0x8]
+   0x555555557271:	mov    esi,0x100
+   0x555555557276:	mov    rdi,rax
+   0x555555557279:	call   0x555555557070 &lt;fgets@plt&gt;
+   0x55555555727e:	mov    rax,QWORD PTR [rbp-0x8]
+   0x555555557282:	lea    rsi,[rip+0x1d7b]        # 0x555555559004
+   0x555555557289:	mov    rdi,rax
+   0x55555555728c:	call   0x555555557090 &lt;strtok@plt&gt;
+   0x555555557291:	mov    rax,QWORD PTR [rbp-0x8]
+   0x555555557295:	leave  
+   0x555555557296:	ret    
+   0x555555557297:	lea    rax,[rip+0x15daa]        # 0x55555556d048
+gef➤  dump memory 0x55555555721f.dmp 0x55555555721f 0x555555557297
+</code></pre>
+
+<p>This gives you the function in plain text in the file <code>0x55555555721f.dmp</code>.
+Ghidra tells us that the offset of the function in the file (Imagebase Offset) is <code>0x321f</code>.</p>
+
+<p>We then use <code>dd</code> to copy the 120 bytes of <code>0x55555555721f.dmp</code> into the file <code>elize_fixed</code> at offset <code>0x321f</code> without truncating the output file:</p>
+
+<pre><code>dd if=0x55555555721f.dmp of=elize_fixed bs=1 seek=$((0x321f)) count=120 conv=notrunc
+</code></pre>
+
+<p>The same procedure can be applied to all other functions.
+The only exception is <code>FUN_00104339</code>, which never gets called unless the correct password was entered.</p>
+
+<p>If you have dumped and patched all these functions, you will end up with a binary like <a href="https://github.com/schlafwandler/CTF-challenges/blob/master/MRMCDCTF-2019/reversing/ElizeVC/solution/elize_almost_fixed_manual">this</a>.
+When you explore the file in ghidra, you will find some functions still encrypted (<code>FUN_0010423f</code> and <code>FUN_00103297</code>).
+But you already know the drill, and you will end up with <a href="https://github.com/schlafwandler/CTF-challenges/blob/master/MRMCDCTF-2019/reversing/ElizeVC/solution/elize_fixed_manual">this</a>.</p>
+
+<p>You can now analysed the complete file with ghidra, just as if there never was a protection applied.</p>
+
+<h2 id="gdb-script">GDB script</h2>
+
+<p>Well, manual dumping works, but it&rsquo;s kind of laborious to dump every function on its own.
+Also, while there where only a couple of protected functions here, such a process will quickly become impracticable for larger binary files with more functions.
+Is there no better way to do this?</p>
+
+<p>Of course there is! We can use gdb&rsquo;s python interface!</p>
+
+<p>We could simply try to automate the steps taken for manual dumping, but there is a better and easier way to do it:</p>
+
+<p>We know the &lsquo;baseline&rsquo; form of the executable, with the protected function encrypted, from the beginning: it&rsquo;s loaded in memory at process start.
+We further know that at various points in time, some encrypted functions are replaced by their decrypted versions, but never all at once (in fact, never more than one).
+But if we can stop the process later, we can easily identify if there is a decrypted function in memory:
+all we have to is to look for differences between the code at the time and the code at the start of the process (baseline).
+The bytes that differ are part of a (now decrypted) protected function, and can be saved for later use.</p>
+
+<p>All we now need a a reliable way to trigger this process for every function that ever gets decrypted.
+Here we can take advantage of the fact that the memory containing the code is not writable.
+Therefore the decryption stub must change the memory permissions whenever it is rewriting a function.
+To do this, it must use the <code>mprotect</code> syscall.</p>
+
+<p>And it uses <code>mprotect</code> a lot, even after the startup of the process:</p>
+
+<pre><code>gef➤  b _start
+Haltepunkt 1 at 0x30c0
+gef➤  r
+Breakpoint 1, 0x00005555555570c0 in _start ()
+[...]
+gef➤  catch syscall ptrace
+Abfangpunkt 2 (syscall 'ptrace' [101])
+gef➤  commands
+Type commands for breakpoint(s) 2, one per line.
+End with a line saying just &quot;end&quot;.
+&gt;set $rax=0
+&gt;c
+&gt;end
+gef➤  catch syscall mprotect
+Abfangpunkt 3 (syscall 'mprotect' [10])
+gef➤  commands
+Type commands for breakpoint(s) 3, one per line.
+End with a line saying just &quot;end&quot;.
+&gt;c
+&gt;end
+gef➤  c
+Continuing.
+Catchpoint 2 (call to syscall ptrace), 0x000055555556323e in ?? ()
+Catchpoint 2 (returned from syscall ptrace), 0x000055555556323e in ?? ()
+Catchpoint 3 (call to syscall mprotect), 0x00005555555636d5 in ?? ()
+Catchpoint 3 (returned from syscall mprotect), 0x00005555555636d5 in ?? ()
+Catchpoint 3 (call to syscall mprotect), 0x0000555555564318 in ?? ()
+Catchpoint 3 (returned from syscall mprotect), 0x0000555555564318 in ?? ()
+Catchpoint 3 (call to syscall mprotect), 0x0000555555564605 in ?? ()
+Catchpoint 3 (returned from syscall mprotect), 0x0000555555564605 in ?? ()
+Catchpoint 3 (call to syscall mprotect), 0x0000555555563a3b in ?? ()
+Catchpoint 3 (returned from syscall mprotect), 0x0000555555563a3b in ?? ()
+[ many more mprotect catchpoint hits ]
+</code></pre>
+
+<p>So here&rsquo;s what we will do:
+We take a snapshot of the interesting memory at process start (baseline).
+Then, we let the process run, but stop it at every <code>mprotect</code> syscall.
+We use this stop to compare the current memory with the saved baseline snapshot, and keep a copy of all changed bytes.
+At the end we will have a copy of every protected function that got called during the execution.</p>
+
+<h3 id="the-components">The components</h3>
+
+<p>The scrip to execute this plan implements three custom commands for <code>gdb</code>:</p>
+
+<ul>
+<li><code>monitor-codechange</code>, to take the baseline snapshot</li>
+<li><code>monitor-codechange-event</code>, to search the memory for changes</li>
+<li><code>monitor-dump</code>, to dump the decrypted memory to a file</li>
+</ul>
+
+<p>Lets take a closer look at each of them:</p>
+
+<h4 id="monitor-codechange">monitor-codechange</h4>
+
+<p>This commands takes the baseline snapshot that will later be used by <code>monitor-codechange-event</code>.</p>
+
+<pre><code>class MonitorCodechange(gdb.Command):
+    def __init__ (self):
+        super (MonitorCodechange, self).__init__ (&quot;monitor-codechange&quot;, gdb.COMMAND_USER)
+
+    def invoke (self, arg, from_tty):
+        global start
+        global size
+        start, size = arg.split(&quot; &quot;)
+        start = int(start,0)
+        size = int(size,0)
+
+        # get baseline
+        inf = gdb.inferiors()[0]
+        global baseline
+        baseline = inf.read_memory(start,size)
+
+        # initialise baseline copy 
+        global decrypted
+        decrypted = inf.read_memory(start,size)
+</code></pre>
+
+<p>The <code>__init__</code> method is boilerplate code to implement a new <code>gdb</code> command.
+The <code>invoke</code> method is called whenever this new command is called by the debugger.
+<code>invoke</code> first parses its command line parameters, the address of the memory to monitor and its size (without any error checks, it will just fail when called with anything other than an address and a size).</p>
+
+<p>Then it gets the state of the debugged program, which <a href="https://sourceware.org/gdb/onlinedocs/gdb/Inferiors-and-Programs.html">in gdb is called an inferior</a>, curiously.
+It creates two copies of the memory:
+one as the baseline to compare against, and one more as a working copy, which will be updated whenever a new decrypted function in found.</p>
+
+<h4 id="monitor-codechange-event">monitor-codechange-event</h4>
+
+<p><code>monitor-codechange-event</code> is intended to be triggered by events during runtime.
+It will do the comparison of the current memory with the baseline copy.</p>
+
+<pre><code>class MonitorCodechangeEvent(gdb.Command):
+    def __init__ (self):
+        super (MonitorCodechangeEvent, self).__init__ (&quot;monitor-codechange-event&quot;, gdb.COMMAND_USER)
+
+    def invoke (self, arg, from_tty):
+        inf = gdb.inferiors()[0]
+        current = inf.read_memory(start,size)
+
+        global baseline
+        global decrypted
+        for i in range(size):
+            if current[i] != baseline[i]:
+                decrypted[i] = current[i]
+
+        gdb.execute(&quot;c&quot;)
+</code></pre>
+
+<p>The function gets a copy of the monitored memory like <code>monitor-codechange</code> before.
+Then it bytewise compares the current memory with the saved baseline.
+Any change found means that there is a newly decrypted function in memory.
+The working copy (called <code>decrypted</code> here) is updated, with the new decrypted function replacing the copy of the old encrypted function.</p>
+
+<h4 id="monitor-dump">monitor-dump</h4>
+
+<p><code>monitor-dump</code> is manually called at the end.
+It exports the decrypted functions to a file.</p>
+
+<pre><code>class MonitorDump(gdb.Command):
+    def __init__ (self):
+        super (DumpDecrypted, self).__init__ (&quot;monitor-dump&quot;, gdb.COMMAND_USER)
+    def invoke (self, arg, from_tty):
+        with open(arg,&quot;wb&quot;) as f:
+            f.write(decrypted.tobytes())
+</code></pre>
+
+<p>Once the program has run, the <code>decrypted</code> array will contain a copy of the monitored memory, but with all the originally encrypted functions replaced with their decrypted versions.
+This function simply writes this memory to the given file name.</p>
+
+<h3 id="combining-the-pieces">Combining the pieces</h3>
+
+<p>The complete script can be found <a href="https://github.com/schlafwandler/CTF-challenges/blob/master/MRMCDCTF-2019/reversing/ElizeVC/solution/monitor_codechange.py">here</a>.</p>
+
+<p>So how do we use it?
+The plan is to run the challenge in the debugger until its startup is done.
+Then we invoke <code>monitor-codechange</code> with the segment containing the encrypted functions to create the baseline snapshot.
+We also create catchpoint on <code>mprotect</code> and set it up to call <code>monitor-codechange-event</code> on every hit, then continue.
+Then we let the program continue.
+After is is finished, we use <code>monitor-dump</code> to dump the copy of the segment with the decrypted functions to disk.
+We will later paste this dump into the executable with <code>dd</code>, as we have done with the single functions before.</p>
+
+<p>The script in combination with <code>gef</code> produces <em>a lot</em> of output.
+I ran the script with a plain <code>gdb</code> and shortened it for better readability.</p>
+
+<pre><code>(gdb) catch syscall ptrace 
+Abfangpunkt 1 (syscall 'ptrace' [101])
+(gdb) commands
+Type commands for breakpoint(s) 1, one per line.
+End with a line saying just &quot;end&quot;.
+&gt;set $rax=0
+&gt;c
+&gt;end
+(gdb) b _start
+Haltepunkt 2 at 0x30c0
+(gdb) r
+Starting program: elize 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library &quot;/lib/x86_64-linux-gnu/libthread_db.so.1&quot;.
+Breakpoint 2, 0x00005555555570c0 in _start ()
+(gdb) source monitor_codechange.py 
+(gdb) monitor-codechange 0x0000555555557000 0x2000
+(gdb) catch syscall mprotect
+Abfangpunkt 3 (syscall 'mprotect' [10])
+(gdb) commands 
+Type commands for breakpoint(s) 3, one per line.
+End with a line saying just &quot;end&quot;.
+&gt;monitor-codechange-event
+&gt;c
+&gt;end
+(gdb) c
+Continuing.
+Catchpoint 1 (call to syscall ptrace), 0x000055555556323e in ?? ()
+Catchpoint 1 (returned from syscall ptrace), 0x000055555556323e in ?? ()
+Catchpoint 3 (call to syscall mprotect), 0x00005555555636d5 in ?? ()
+Catchpoint 3 (returned from syscall mprotect), 0x00005555555636d5 in ?? ()
+Catchpoint 3 (call to syscall mprotect), 0x0000555555564318 in ?? ()
+
+[ many more catchpoint hits ]
+
+Catchpoint 3 (returned from syscall mprotect), 0x0000555555564318 in ?? ()
+The password is the flag. What is the password?
+
+[ some more catchpoint hits ]
+
+Catchpoint 3 (returned from syscall mprotect), 0x0000555555564318 in ?? ()
+foobar
+Catchpoint 3 (call to syscall mprotect), 0x0000555555564605 in ?? ()
+
+[ still more catchpoint hits ]
+
+Catchpoint 3 (returned from syscall mprotect), 0x0000555555564318 in ?? ()
+Wrong. Try again.
+Catchpoint 3 (call to syscall mprotect), 0x0000555555564605 in ?? ()
+
+[ and a lot more chatchpoint hits ]
+
+Catchpoint 3 (call to syscall mprotect), 0x0000555555563a3b in ?? ()
+Catchpoint 3 (returned from syscall mprotect), 0x0000555555563a3b in ?? ()
+[Inferior 1 (process 24412) exited normally]
+(gdb) monitor-dump out.dmp
+</code></pre>
+
+<p>Now we have a memory dump of the code segment, but with all the functions that got executed during the run in decrypted form.</p>
+
+<p>We now paste the dumped code it into the binary and check if it runs like expected.</p>
+
+<pre><code>user@host:$ dd if=out.dmp of=elize bs=1 count=$((0x2000)) seek=$((0x3000)) conv=notrunc
+8192+0 Datensätze ein
+8192+0 Datensätze aus
+8192 Bytes (8,2 kB, 8,0 KiB) kopiert, 0,0205774 s, 398 kB/s
+user@host:$ ./elize 
+The password is the flag. What is the password?
+foobar
+Wrong. Try again.
+</code></pre>
+
+<p>Works like the original binary.
+But when you open it in <code>ghidra</code>, you will find all important functions unencrypted, just like with the manual dumped binary.
+<img src="https://schlafwandler.github.io/img/mrmcdctf2019-elizeVC-ghidra-scriped.png" alt="Fixed binary in ghidra" />
+You can find the executable <a href="https://github.com/schlafwandler/CTF-challenges/blob/master/MRMCDCTF-2019/reversing/ElizeVC/solution/elize_fixed_scripted">here</a>.</p>
+
+<h4 id="advantages-of-the-script">Advantages of the script</h4>
+
+<p>The scripted approach has two advantages over manual dumping:
+First, it&rsquo;s less work (once you have written the script).
+And second, it&rsquo;s scalable:
+dumping the functions by hand works for this challenge only because there are only a handful of encrypted function.
+If there are hundreds or even thousands of functions in a binary a manual approach is no longer feasible.
+And the number of protected functions you may encounter in a binary in the wild will most probably be closer to a hundred than to the nine encrypted functions in this challenge.</p>
+
+<p>Also, I have some hope that this script (with some adaptations) might also work against other protectors.
+With some modifications, it should in principle be usable against any crypter that encrypts executable code in place.</p>
+<ul class="pa0">
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/mrmcdctf2019" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">MRMCDCTF2019</a>
+   </li>
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/ctf" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">CTF</a>
+   </li>
+  
+   <li class="list">
+     <a href="https://schlafwandler.github.io/tags/gdb-scripting" class="link f5 grow no-underline br-pill ba ph3 pv2 mb2 dib black sans-serif">GDB scripting</a>
+   </li>
+  
+</ul>
+<div class="mt6">
+        
+      </div>
+    </section>
+
+    <aside class="w-30-l mt6-l"><div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">What&#39;s in this posts</p>
+      <nav id="TableOfContents">
+<ul>
+<li>
+<ul>
+<li><a href="#solution-to-elizevc-part-ii-reconstructing-the-original-binary">Solution to ElizeVC (Part II): Reconstructing the original binary</a>
+<ul>
+<li>
+<ul>
+<li><a href="#the-protection">The Protection</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#manual-dumping">Manual dumping</a></li>
+<li><a href="#gdb-script">GDB script</a>
+<ul>
+<li><a href="#the-components">The components</a>
+<ul>
+<li><a href="#monitor-codechange">monitor-codechange</a></li>
+<li><a href="#monitor-codechange-event">monitor-codechange-event</a></li>
+<li><a href="#monitor-dump">monitor-dump</a></li>
+</ul></li>
+<li><a href="#combining-the-pieces">Combining the pieces</a>
+<ul>
+<li><a href="#advantages-of-the-script">Advantages of the script</a></li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+  </div>
+
+
+
+
+  <div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">Related</p>
+    <ul class="pa0 list">
+	   
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-elizevc/">MRMCDCTF2019: ElizeVC</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-carbonara/">MRMCDCTF2019: Carbonara</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-misguided/">MRMCDCTF2019: Misguided</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-konradvc/">MRMCDCTF2019: KonradVC</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-cereal/">MRMCDCTF2019: Cereal</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-hopping_machine/">MRMCDCTF2019: Hopping machine</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-slicer/">MRMCDCTF2019: Slicer</a>
+        </li>
+	    
+	     <li  class="mb2">
+          <a href="https://schlafwandler.github.io/posts/mrmcdctf2019-sitting_duck/">MRMCDCTF2019: Sitting duck</a>
+        </li>
+	    
+    </ul>
+</div>
+
+</aside>
+
+  </article>
+
+    </main>
+    <footer class="bg-navy bottom-0 w-100 pa3" role="contentinfo">
+  <div class="flex justify-between">
+  <a class="f4 fw4 hover-white no-underline white-70 dn dib-ns pv2 ph3" href="https://schlafwandler.github.io" >
+    &copy; 2019 Pointers to the void
+  </a>
+    <div>
+
+
+
+<a href="https://twitter.com/wallpecker" target="_blank" class="link-transition twitter link dib z-999 pt3 pt0-l mr1" title="Twitter link" rel="noopener" aria-label="follow on Twitter——Opens in a new window">
+  <svg height="32px"  style="enable-background:new 0 0 67 67;" version="1.1" viewBox="0 0 67 67" width="32px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M37.167,22.283c-2.619,0.953-4.274,3.411-4.086,6.101  l0.063,1.038l-1.048-0.127c-3.813-0.487-7.145-2.139-9.974-4.915l-1.383-1.377l-0.356,1.017c-0.754,2.267-0.272,4.661,1.299,6.271  c0.838,0.89,0.649,1.017-0.796,0.487c-0.503-0.169-0.943-0.296-0.985-0.233c-0.146,0.149,0.356,2.076,0.754,2.839  c0.545,1.06,1.655,2.097,2.871,2.712l1.027,0.487l-1.215,0.021c-1.173,0-1.215,0.021-1.089,0.467  c0.419,1.377,2.074,2.839,3.918,3.475l1.299,0.444l-1.131,0.678c-1.676,0.976-3.646,1.526-5.616,1.568  C19.775,43.256,19,43.341,19,43.405c0,0.211,2.557,1.397,4.044,1.864c4.463,1.377,9.765,0.783,13.746-1.568  c2.829-1.673,5.657-5,6.978-8.221c0.713-1.716,1.425-4.851,1.425-6.354c0-0.975,0.063-1.102,1.236-2.267  c0.692-0.678,1.341-1.419,1.467-1.631c0.21-0.403,0.188-0.403-0.88-0.043c-1.781,0.636-2.033,0.551-1.152-0.402  c0.649-0.678,1.425-1.907,1.425-2.267c0-0.063-0.314,0.042-0.671,0.233c-0.377,0.212-1.215,0.53-1.844,0.72l-1.131,0.361l-1.027-0.7  c-0.566-0.381-1.361-0.805-1.781-0.932C39.766,21.902,38.131,21.944,37.167,22.283z M33,64C16.432,64,3,50.569,3,34S16.432,4,33,4  s30,13.431,30,30S49.568,64,33,64z" style="fill-rule:evenodd;clip-rule:evenodd;fill:;"/></svg>
+
+<span class="new-window"><svg  height="8px"  style="enable-background:new 0 0 1000 1000;" version="1.1" viewBox="0 0 1000 1000" width="8px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >
+<path d="M598 128h298v298h-86v-152l-418 418-60-60 418-418h-152v-86zM810 810v-298h86v298c0 46-40 86-86 86h-596c-48 0-86-40-86-86v-596c0-46 38-86 86-86h298v86h-298v596h596z" style="fill-rule:evenodd;clip-rule:evenodd;fill:;"/>
+</svg>
+</span></a>
+
+
+
+
+
+<a href="https://github.com/schlafwandler" target="_blank" class="link-transition github link dib z-999 pt3 pt0-l mr1" title="Github link" rel="noopener" aria-label="follow on Github——Opens in a new window">
+  <svg  height="32px"  style="enable-background:new 0 0 512 512;" version="1.1" viewBox="0 0 512 512" width="32px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >
+  <path d="M256,32C132.3,32,32,134.8,32,261.7c0,101.5,64.2,187.5,153.2,217.9c11.2,2.1,15.3-5,15.3-11.1   c0-5.5-0.2-19.9-0.3-39.1c-62.3,13.9-75.5-30.8-75.5-30.8c-10.2-26.5-24.9-33.6-24.9-33.6c-20.3-14.3,1.5-14,1.5-14   c22.5,1.6,34.3,23.7,34.3,23.7c20,35.1,52.4,25,65.2,19.1c2-14.8,7.8-25,14.2-30.7c-49.7-5.8-102-25.5-102-113.5   c0-25.1,8.7-45.6,23-61.6c-2.3-5.8-10-29.2,2.2-60.8c0,0,18.8-6.2,61.6,23.5c17.9-5.1,37-7.6,56.1-7.7c19,0.1,38.2,2.6,56.1,7.7   c42.8-29.7,61.5-23.5,61.5-23.5c12.2,31.6,4.5,55,2.2,60.8c14.3,16.1,23,36.6,23,61.6c0,88.2-52.4,107.6-102.3,113.3   c8,7.1,15.2,21.1,15.2,42.5c0,30.7-0.3,55.5-0.3,63c0,6.1,4,13.3,15.4,11C415.9,449.1,480,363.1,480,261.7   C480,134.8,379.7,32,256,32z"/>
+</svg>
+
+<span class="new-window"><svg  height="8px"  style="enable-background:new 0 0 1000 1000;" version="1.1" viewBox="0 0 1000 1000" width="8px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >
+<path d="M598 128h298v298h-86v-152l-418 418-60-60 418-418h-152v-86zM810 810v-298h86v298c0 46-40 86-86 86h-596c-48 0-86-40-86-86v-596c0-46 38-86 86-86h298v86h-298v596h596z" style="fill-rule:evenodd;clip-rule:evenodd;fill:;"/>
+</svg>
+</span></a>
+
+
+
+
+</div>
+  </div>
+</footer>
+
+    
+
+  <script src="https://schlafwandler.github.io/dist/js/app.3fc0f988d21662902933.js"></script>
+
+
+  </body>
+</html>
