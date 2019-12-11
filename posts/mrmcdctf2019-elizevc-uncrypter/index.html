@@ -46,7 +46,7 @@ The Protection The protector encrypts every function on its own (as opposed to, 
 
 <meta itemprop="datePublished" content="2019-11-13T22:10:51&#43;02:00" />
 <meta itemprop="dateModified" content="2019-11-13T22:10:51&#43;02:00" />
-<meta itemprop="wordCount" content="3462">
+<meta itemprop="wordCount" content="3514">
 
 
 
@@ -406,6 +406,12 @@ The password is the flag. What is the password?
 </code></pre>
 
 <p>(The file can be found <a href="https://github.com/schlafwandler/CTF-challenges/blob/master/MRMCDCTF-2019/reversing/ElizeVC/solution/elize_fixed_FUN_001031ba">here</a>)</p>
+
+<p><strong>Update 11.12.2019:</strong>
+I have written two ghidra scripts that make this process less cumbersome:
+<a href="https://github.com/schlafwandler/ghidra_WriteBlob">WriteBlob</a> makes it possible to replace the function directly in ghidra, and <a href="https://github.com/schlafwandler/ghidra_SavePatch">SavePatch
+</a> allows you to write the changes back to the executable.
+This should be somewhat more convenient that patching the binary with <code>dd</code>. <strong>End of update.</strong></p>
 
 <p>Since the file with the reconstructed function works just fine, we can infer that there is no further integrity check in the protector.</p>
 
